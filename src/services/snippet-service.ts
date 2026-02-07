@@ -81,8 +81,8 @@ export class SnippetService {
       this.initialized = true;
 
       // Index all snippets for search after loading
-      const allMetadata = Array.from(this.snippets.values()).map((s) => s.metadata);
-      if (allMetadata.length > 0) {
+      if (this.snippets.size > 0) {
+        const allMetadata = Array.from(this.snippets.values(), (s) => s.metadata);
         this.searchIndex.addAll(allMetadata);
       }
     } catch (error) {
@@ -200,7 +200,8 @@ export class SnippetService {
 
     const results = this.searchIndex.search(query);
     return results.map((result) => {
-      const prefix = result['prefix'] as string;
+      // MiniSearch returns stored fields as index signatures, requiring bracket notation
+      const prefix = String(result['prefix']);
       const snippet = this.snippets.get(prefix);
       if (snippet === undefined) {
         throw new Error(`Search index out of sync: snippet ${prefix} not found`);
