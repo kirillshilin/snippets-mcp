@@ -256,4 +256,109 @@ describe('SnippetService', () => {
       expect(snippet).toEqual(snippetData);
     });
   });
+
+  describe('searchSnippets', () => {
+    beforeEach(async () => {
+      // Create multiple test snippets with different content
+      await writeFile(
+        join(testSnippetsDir, 'for-loop.json'),
+        JSON.stringify({
+          prefix: 'for',
+          title: 'For Loop',
+          keywords: ['loop', 'iteration', 'array'],
+          scope: 'javascript,typescript',
+          description: 'Standard for loop structure',
+          content: 'for (let i = 0; i < array.length; i++) {}',
+        }),
+      );
+
+      await writeFile(
+        join(testSnippetsDir, 'arrow-function.json'),
+        JSON.stringify({
+          prefix: 'arrowfn',
+          title: 'Arrow Function',
+          keywords: ['function', 'arrow', 'lambda'],
+          scope: 'javascript,typescript',
+          description: 'Arrow function definition',
+          content: 'const fn = () => {};',
+        }),
+      );
+
+      await writeFile(
+        join(testSnippetsDir, 'hello-world.json'),
+        JSON.stringify({
+          prefix: 'hello',
+          title: 'Hello World',
+          keywords: ['greeting', 'print', 'console'],
+          scope: 'javascript,typescript',
+          description: 'Prints Hello World to the console',
+          content: 'console.log("Hello, World!");',
+        }),
+      );
+
+      await service.initialize();
+    });
+
+    it('should return empty array for empty query', async () => {
+      const results = service.searchSnippets('');
+      expect(results).toEqual([]);
+    });
+
+    it('should return empty array for whitespace-only query', async () => {
+      const results = service.searchSnippets('   ');
+      expect(results).toEqual([]);
+    });
+
+    it('should search by title', async () => {
+      const results = service.searchSnippets('Arrow Function');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((r) => r.prefix === 'arrowfn')).toBe(true);
+    });
+
+    it('should search by keyword', async () => {
+      const results = service.searchSnippets('loop');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((r) => r.prefix === 'for')).toBe(true);
+    });
+
+    it('should search by description', async () => {
+      const results = service.searchSnippets('console');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((r) => r.prefix === 'hello')).toBe(true);
+    });
+
+    it('should search by scope', async () => {
+      const results = service.searchSnippets('typescript');
+      expect(results.length).toBeGreaterThan(0);
+      // All test snippets have typescript in scope
+      expect(results.length).toBe(3);
+    });
+
+    it('should support fuzzy search', async () => {
+      // "functoin" is a typo for "function"
+      const results = service.searchSnippets('functoin');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((r) => r.prefix === 'arrowfn')).toBe(true);
+    });
+
+    it('should support prefix search', async () => {
+      // Partial word search
+      const results = service.searchSnippets('arr');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((r) => r.prefix === 'arrowfn')).toBe(true);
+    });
+
+    it('should return snippets ranked by relevance', async () => {
+      // "loop" appears in both keywords and title for for-loop
+      const results = service.searchSnippets('loop');
+      expect(results.length).toBeGreaterThan(0);
+      // The for-loop snippet should be in results
+      expect(results.some((r) => r.prefix === 'for')).toBe(true);
+    });
+
+    it('should return no results for non-matching query', async () => {
+      const results = service.searchSnippets('nonexistent-query-xyz');
+      expect(results).toEqual([]);
+    });
+  });
 });
