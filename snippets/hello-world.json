@@ -1,0 +1,8 @@
+{
+  "prefix": "hello",
+  "title": "Hello World",
+  "keywords": ["greeting", "print", "console"],
+  "scope": "javascript,typescript",
+  "description": "Prints Hello World to the console",
+  "content": "console.log('Hello, World!');"
+}
