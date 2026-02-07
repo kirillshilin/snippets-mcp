@@ -1,10 +1,11 @@
-export interface Snippet {
-  id: string;
+export interface SnippetMetadata {
+  prefix: string; // Key used to trigger snippet
   title: string;
+  keywords: string[];
+  scope: string; // Comma-separated languages or file extensions
   description: string;
-  code: string;
-  language: string;
-  tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
+}
+
+export interface Snippet extends SnippetMetadata {
+  content: string; // The actual snippet code/text
 }

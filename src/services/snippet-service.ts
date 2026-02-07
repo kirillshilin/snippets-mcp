@@ -1,38 +1,180 @@
-import type { Snippet } from '../types/snippet.js';
+import { readdir, readFile, stat } from 'node:fs/promises';
+import { join, extname } from 'node:path';
+import type { Snippet, SnippetMetadata } from '../types/snippet.js';
+import { config } from '../config.js';
+
+interface SnippetFile {
+  metadata: SnippetMetadata;
+  filePath: string;
+}
 
 export class SnippetService {
-  private readonly snippets: ReadonlyMap<string, Snippet>;
+  private readonly snippets: Map<string, SnippetFile>;
+  private readonly snippetsDir: string;
+  private initialized: boolean = false;
 
-  constructor() {
+  constructor(snippetsDir?: string) {
     this.snippets = new Map();
+    this.snippetsDir = snippetsDir ?? config.snippetsDir;
   }
 
-  public listSnippets(): Snippet[] {
-    // TODO: Implement actual snippet listing
-    return Array.from(this.snippets.values());
-  }
-
-  public getSnippet(id: string): Snippet {
-    // TODO: Implement actual snippet retrieval
-    const snippet = this.snippets.get(id);
-    if (snippet === undefined) {
-      throw new Error(`Snippet not found: ${id}`);
+  /**
+   * Initialize the service by loading all snippet metadata from files
+   */
+  public async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
     }
-    return snippet;
+
+    try {
+      // Check if snippets directory exists
+      const dirStats = await stat(this.snippetsDir);
+      if (!dirStats.isDirectory()) {
+        throw new Error(`Snippets path is not a directory: ${this.snippetsDir}`);
+      }
+
+      // Read all files in the snippets directory
+      const files = await readdir(this.snippetsDir);
+
+      // Load metadata from each snippet file
+      for (const file of files) {
+        // Skip non-JSON files
+        if (extname(file) !== '.json') {
+          continue;
+        }
+
+        const filePath = join(this.snippetsDir, file);
+        try {
+          const content = await readFile(filePath, 'utf-8');
+          const data = JSON.parse(content) as Record<string, unknown>;
+
+          // Validate and extract metadata
+          const metadata = this.parseSnippetMetadata(data);
+          const prefix = metadata.prefix;
+
+          // Store metadata with file path
+          this.snippets.set(prefix, {
+            metadata,
+            filePath,
+          });
+          // eslint-disable-next-line no-console
+        } catch (error) {
+          console.error(`Failed to load snippet from ${file}:`, error);
+          // Continue loading other snippets
+        }
+      }
+
+      this.initialized = true;
+    } catch (error) {
+      // If directory doesn't exist, just initialize with empty snippets
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // eslint-disable-next-line no-console
+        console.warn(`Snippets directory not found: ${this.snippetsDir}`);
+        this.initialized = true;
+        return;
+      }
+      throw error;
+    }
   }
 
-  public searchSnippets(query: string): Snippet[] {
-    // TODO: Implement actual snippet search
-    const results: Snippet[] = [];
-    for (const snippet of this.snippets.values()) {
-      if (
-        snippet.title.toLowerCase().includes(query.toLowerCase()) ||
-        snippet.language.toLowerCase().includes(query.toLowerCase()) ||
-        snippet.tags.some((tag) => tag.toLowerCase().includes(query.toLowerCase()))
-      ) {
-        results.push(snippet);
+  /**
+   * Parse and validate snippet metadata from raw data
+   */
+  private parseSnippetMetadata(data: Record<string, unknown>): SnippetMetadata {
+    if (typeof data['prefix'] !== 'string' || data['prefix'].length === 0) {
+      throw new Error('Invalid or missing prefix field');
+    }
+    if (typeof data['title'] !== 'string' || data['title'].length === 0) {
+      throw new Error('Invalid or missing title field');
+    }
+    if (typeof data['description'] !== 'string') {
+      throw new Error('Invalid or missing description field');
+    }
+    if (typeof data['scope'] !== 'string') {
+      throw new Error('Invalid or missing scope field');
+    }
+
+    // Keywords can be array or undefined
+    let keywords: string[] = [];
+    if (data['keywords'] !== undefined) {
+      if (Array.isArray(data['keywords'])) {
+        keywords = data['keywords'].filter((k): k is string => typeof k === 'string');
+      } else {
+        throw new Error('Invalid keywords field - must be an array');
       }
     }
-    return results;
+
+    return {
+      prefix: data['prefix'],
+      title: data['title'],
+      description: data['description'],
+      scope: data['scope'],
+      keywords,
+    };
+  }
+
+  /**
+   * Get list of all snippet metadata (without content)
+   */
+  public listSnippetMetadata(): SnippetMetadata[] {
+    return Array.from(this.snippets.values()).map((snippet) => snippet.metadata);
+  }
+
+  /**
+   * Get the content of a specific snippet by its prefix
+   */
+  public async getSnippetContent(prefix: string): Promise<string> {
+    const snippet = this.snippets.get(prefix);
+    if (snippet === undefined) {
+      throw new Error(`Snippet not found: ${prefix}`);
+    }
+
+    try {
+      // Read the full file to get content
+      const content = await readFile(snippet.filePath, 'utf-8');
+      const data = JSON.parse(content) as Record<string, unknown>;
+
+      if (typeof data['content'] !== 'string') {
+        throw new Error('Invalid or missing content field');
+      }
+
+      return data['content'];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to read snippet content for ${prefix}: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Get a complete snippet including both metadata and content
+   */
+  public async getSnippet(prefix: string): Promise<Snippet> {
+    const snippet = this.snippets.get(prefix);
+    if (snippet === undefined) {
+      throw new Error(`Snippet not found: ${prefix}`);
+    }
+
+    const content = await this.getSnippetContent(prefix);
+    return {
+      ...snippet.metadata,
+      content,
+    };
+  }
+
+  /**
+   * @deprecated Use listSnippetMetadata() instead
+   * Legacy method for backward compatibility with MCP server
+   */
+  public listSnippets(): SnippetMetadata[] {
+    return this.listSnippetMetadata();
+  }
+
+  /**
+   * @deprecated This method will be removed - use prefix-based lookup instead
+   * Legacy search method for backward compatibility with MCP server
+   */
+  public searchSnippets(_query: string): SnippetMetadata[] {
+    // TODO: Implement search functionality when MCP is updated
+    return [];
   }
 }
