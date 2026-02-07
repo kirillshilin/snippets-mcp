@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, extname } from 'node:path';
+import MiniSearch from 'minisearch';
 import type { Snippet, SnippetMetadata } from '../types/snippet.js';
 import { config } from '../config.js';
 
@@ -12,10 +13,23 @@ export class SnippetService {
   private readonly snippets: Map<string, SnippetFile>;
   private readonly snippetsDir: string;
   private initialized: boolean = false;
+  private searchIndex: MiniSearch<SnippetMetadata>;
 
   constructor(snippetsDir?: string) {
     this.snippets = new Map();
     this.snippetsDir = snippetsDir ?? config.snippetsDir;
+
+    // Initialize MiniSearch with fields to index
+    this.searchIndex = new MiniSearch({
+      fields: ['title', 'description', 'keywords', 'scope', 'prefix'],
+      storeFields: ['prefix', 'title', 'description', 'scope', 'keywords'],
+      idField: 'prefix', // Use prefix as the unique identifier
+      searchOptions: {
+        boost: { title: 2, keywords: 1.5 },
+        fuzzy: 0.2,
+        prefix: true,
+      },
+    });
   }
 
   /**
@@ -65,6 +79,12 @@ export class SnippetService {
       }
 
       this.initialized = true;
+
+      // Index all snippets for search after loading
+      const allMetadata = Array.from(this.snippets.values()).map((s) => s.metadata);
+      if (allMetadata.length > 0) {
+        this.searchIndex.addAll(allMetadata);
+      }
     } catch (error) {
       // If directory doesn't exist, just initialize with empty snippets
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -170,11 +190,22 @@ export class SnippetService {
   }
 
   /**
-   * @deprecated This method will be removed - use prefix-based lookup instead
-   * Legacy search method for backward compatibility with MCP server
+   * Search snippets by query string using full text search
+   * Searches across title, description, keywords, scope, and prefix
    */
-  public searchSnippets(_query: string): SnippetMetadata[] {
-    // TODO: Implement search functionality when MCP is updated
-    return [];
+  public searchSnippets(query: string): SnippetMetadata[] {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+
+    const results = this.searchIndex.search(query);
+    return results.map((result) => {
+      const prefix = result['prefix'] as string;
+      const snippet = this.snippets.get(prefix);
+      if (snippet === undefined) {
+        throw new Error(`Search index out of sync: snippet ${prefix} not found`);
+      }
+      return snippet.metadata;
+    });
   }
 }
