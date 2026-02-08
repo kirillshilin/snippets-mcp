@@ -139,16 +139,29 @@ export class SnippetsMcpServer {
           mimeType: 'text/plain',
         },
         async () => {
-          const fullSnippet = await this.snippetService.getSnippet(snippet.prefix);
-          return {
-            contents: [
-              {
-                uri,
-                mimeType: 'text/plain',
-                text: fullSnippet.content,
-              },
-            ],
-          };
+          try {
+            const fullSnippet = await this.snippetService.getSnippet(snippet.prefix);
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: 'text/plain',
+                  text: fullSnippet.content,
+                },
+              ],
+            };
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: 'text/plain',
+                  text: `Error loading snippet: ${errorMessage}`,
+                },
+              ],
+            };
+          }
         },
       );
     }
