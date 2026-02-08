@@ -1,5 +1,23 @@
 import express, { type Express, type Request, type Response } from 'express';
+import { z } from 'zod';
 import { SnippetsMcpServer } from './mcp/server.js';
+
+// Zod schemas for request validation
+const SearchQuerySchema = z.object({
+  q: z.string().min(1, 'Query parameter "q" is required and cannot be empty'),
+  limit: z
+    .string()
+    .optional()
+    .default('1')
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => Number.isFinite(val) && val > 0, {
+      message: 'Query parameter "limit" must be a valid positive number',
+    }),
+});
+
+const SnippetPrefixSchema = z.object({
+  prefix: z.string().min(1, 'Snippet prefix is required'),
+});
 
 export async function createServer(): Promise<Express> {
   const app = express();
@@ -21,32 +39,39 @@ export async function createServer(): Promise<Express> {
   });
 
   app.get('/api/snippets/search', (req: Request, res: Response): void => {
-    const query = typeof req.query['q'] === 'string' ? req.query['q'].trim() : '';
-    if (query.length === 0) {
-      res.status(400).json({ error: 'Missing query parameter "q"' });
-      return;
+    try {
+      const { q: query, limit } = SearchQuerySchema.parse(req.query);
+      const results = mcpServer.searchSnippetMetadata(query, limit);
+      res.json({ query, results, limit });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          error: 'Invalid request parameters',
+          details: error.errors.map((e) => e.message),
+        });
+        return;
+      }
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
-
-    const limitRaw = req.query['limit'];
-    const limit =
-      typeof limitRaw === 'string' && limitRaw.trim().length > 0
-        ? Number.parseInt(limitRaw, 10)
-        : 1;
-    if (!Number.isFinite(limit)) {
-      res.status(400).json({ error: 'Invalid query parameter "limit"' });
-      return;
-    }
-
-    const results = mcpServer.searchSnippetMetadata(query, limit);
-    res.json({ query, results, limit });
   });
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   app.get('/api/snippets/:prefix', async (req: Request, res: Response): Promise<void> => {
     try {
-      const snippet = await mcpServer.getSnippet(req.params['prefix'] ?? '');
+      const { prefix } = SnippetPrefixSchema.parse(req.params);
+      const snippet = await mcpServer.getSnippet(prefix);
       res.json(snippet);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          error: 'Invalid request parameters',
+          details: error.errors.map((e) => e.message),
+        });
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Unknown error';
       if (message.includes('Snippet not found')) {
         res.status(404).json({ error: message });

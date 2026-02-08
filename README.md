@@ -1,112 +1,83 @@
-# Snippets MCP Server
+# 📝 Snippets MCP Server
 
-A Model Context Protocol (MCP) server that provides HTTP access to code snippets.
+A Model Context Protocol (MCP) server that provides access to code snippets through stdio and HTTP transport.
 
-## Features
+## ✨ Features
 
-- MCP server implementation with HTTP transport
-- Code snippets management
-- TypeScript with strictest compiler settings
-- ESLint and Prettier configured
-- Jest for unit testing
-- Windows CRLF line endings
+- 🔌 MCP server with stdio and HTTP transport
+- 📚 Code snippets management
+- 🔒 TypeScript with strictest compiler settings
+- ✅ ESLint and Prettier configured
+- 🧪 Jest for unit testing
 
-## Prerequisites
+## 🚀 Quick Start
 
+### Prerequisites
 - Node.js >= 18.0.0
-- npm or yarn
 
-## Installation
-
+### Installation
 ```bash
 npm install
-```
-
-## Development
-
-```bash
-# Build the project
 npm run build
-
-# Run in development mode with hot reload
-npm run dev
-
-# Start the server
-npm start
 ```
 
-## Testing
-
+### Development
 ```bash
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
+npm run dev              # HTTP server with hot reload
+npm run dev:stdio        # Stdio server for testing
 ```
 
-## Linting and Formatting
+## 🔧 Configuration
 
-```bash
-# Run ESLint
-npm run lint
-
-# Fix ESLint issues
-npm run lint:fix
-
-# Format code with Prettier
-npm run format
-
-# Check formatting
-npm run format:check
+### For GitHub Copilot in VS Code
+1. Press `Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"
+2. Add (replace with your actual path):
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "snippets-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
+    }
+  }
+}
 ```
 
-## Project Structure
-
-```
-snippets-mcp/
-├── src/
-│   ├── index.ts              # Application entry point
-│   ├── server.ts             # Express server setup
-│   ├── config.ts             # Configuration
-│   ├── mcp/
-│   │   └── server.ts         # MCP server implementation
-│   ├── services/
-│   │   └── snippet-service.ts # Snippet management service
-│   └── types/
-│       └── snippet.ts        # Type definitions
-├── tests/
-│   └── snippet-service.test.ts # Unit tests
-├── package.json
-├── tsconfig.json
-├── jest.config.ts
-├── .eslintrc.json
-├── .prettierrc.json
-└── README.md
+### For Claude Desktop
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) with your actual path:
+```json
+{
+  "mcpServers": {
+    "snippets-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
+    }
+  }
+}
 ```
 
-## API Endpoints
+### For Cline VS Code Extension
+Add to `.vscode/settings.json` (replace with your actual path):
+```json
+{
+  "cline.mcpServers": {
+    "snippets-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
+    }
+  }
+}
+```
 
-### Health Check
-- `GET /health` - Server health check
-
-### MCP Endpoint
-- `POST /mcp` - MCP request handler
-
-## MCP Tools
+## 🛠️ Available Tools
 
 - `list_snippets` - List all available code snippets
-- `get_snippet` - Get a specific code snippet by ID
-- `search_snippets` - Search for snippets by language or tag
+- `get_snippet` - Get a specific snippet by ID
+- `search_snippets` - Search snippets by query
 
-## MCP Resources
+## 📦 Available Resources
 
-The server registers all snippets as MCP resources:
-
-- `snippet://list` - List of all available code snippets metadata
+- `snippet://list` - JSON list of all snippets
 - `snippet://{prefix}` - Individual snippet content (e.g., `snippet://hello`, `snippet://for`)
 
 Each snippet resource provides:
@@ -115,14 +86,29 @@ Each snippet resource provides:
 - Content: The actual code snippet
 - MIME type: `text/plain`
 
-## Configuration
+## 🌐 HTTP API Endpoints
 
-The server can be configured using environment variables:
+- `GET /health` - Server health check
+- `POST /mcp` - MCP request handler
+
+## 🧰 Commands
+
+```bash
+npm run build          # Build TypeScript
+npm start              # Start HTTP server
+npm run start:stdio    # Start stdio server
+npm test               # Run tests
+npm run lint           # Check code with ESLint
+npm run lint:fix       # Auto-fix ESLint issues
+npm run format         # Format code with Prettier
+```
+
+## ⚙️ Environment Variables
 
 - `PORT` - Server port (default: 3000)
 - `HOST` - Server host (default: 0.0.0.0)
 - `NODE_ENV` - Environment (default: development)
 
-## License
+## 📄 License
 
 MIT
