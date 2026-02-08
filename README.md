@@ -102,6 +102,19 @@ snippets-mcp/
 - `get_snippet` - Get a specific code snippet by ID
 - `search_snippets` - Search for snippets by language or tag
 
+## MCP Resources
+
+The server registers all snippets as MCP resources:
+
+- `snippet://list` - List of all available code snippets metadata
+- `snippet://{prefix}` - Individual snippet content (e.g., `snippet://hello`, `snippet://for`)
+
+Each snippet resource provides:
+- Title: The snippet name
+- Description: What the snippet does
+- Content: The actual code snippet
+- MIME type: `text/plain`
+
 ## Configuration
 
 The server can be configured using environment variables:
