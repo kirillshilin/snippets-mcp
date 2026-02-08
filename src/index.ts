@@ -1,4 +1,4 @@
-import { createServer } from './server.js';
+import { createServer } from './api.js';
 import { config } from './config.js';
 
 async function main(): Promise<void> {

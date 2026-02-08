@@ -7,7 +7,10 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:stdio": "node dist/stdio.js",
     "dev": "tsx watch src/index.ts",
+    "dev:stdio": "tsx src/stdio.ts",
+    "inspect:mcp": "npm run build && npx @modelcontextprotocol/inspector node dist/stdio.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

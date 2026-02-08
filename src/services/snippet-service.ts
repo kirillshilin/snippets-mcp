@@ -19,6 +19,8 @@ export class SnippetService {
     this.snippets = new Map();
     this.snippetsDir = snippetsDir ?? config.snippetsDir;
 
+    // eslint-disable-next-line no-console
+
     // Initialize MiniSearch with fields to index
     this.searchIndex = new MiniSearch({
       fields: ['title', 'description', 'keywords', 'scope', 'prefix'],
@@ -37,10 +39,12 @@ export class SnippetService {
    */
   public async initialize(): Promise<void> {
     if (this.initialized) {
+      // eslint-disable-next-line no-console
       return;
     }
 
     try {
+      // eslint-disable-next-line no-console
       // Check if snippets directory exists
       const dirStats = await stat(this.snippetsDir);
       if (!dirStats.isDirectory()) {
@@ -49,16 +53,19 @@ export class SnippetService {
 
       // Read all files in the snippets directory
       const files = await readdir(this.snippetsDir);
+      // eslint-disable-next-line no-console
 
       // Load metadata from each snippet file
       for (const file of files) {
         // Skip non-JSON files
         if (extname(file) !== '.json') {
+          // eslint-disable-next-line no-console
           continue;
         }
 
         const filePath = join(this.snippetsDir, file);
         try {
+          // eslint-disable-next-line no-console
           const content = await readFile(filePath, 'utf-8');
           const data = JSON.parse(content) as Record<string, unknown>;
 
@@ -84,11 +91,13 @@ export class SnippetService {
       if (this.snippets.size > 0) {
         const allMetadata = Array.from(this.snippets.values(), (s) => s.metadata);
         this.searchIndex.addAll(allMetadata);
+        // eslint-disable-next-line no-console
+      } else {
+        // eslint-disable-next-line no-console
       }
     } catch (error) {
       // If directory doesn't exist, just initialize with empty snippets
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        // eslint-disable-next-line no-console
         console.warn(`Snippets directory not found: ${this.snippetsDir}`);
         this.initialized = true;
         return;
@@ -101,6 +110,7 @@ export class SnippetService {
    * Parse and validate snippet metadata from raw data
    */
   private parseSnippetMetadata(data: Record<string, unknown>): SnippetMetadata {
+    // eslint-disable-next-line no-console
     if (typeof data['prefix'] !== 'string' || data['prefix'].length === 0) {
       throw new Error('Invalid or missing prefix field');
     }
@@ -137,6 +147,7 @@ export class SnippetService {
    * Get list of all snippet metadata (without content)
    */
   public listSnippetMetadata(): SnippetMetadata[] {
+    // eslint-disable-next-line no-console
     return Array.from(this.snippets.values()).map((snippet) => snippet.metadata);
   }
 
@@ -144,6 +155,7 @@ export class SnippetService {
    * Get the content of a specific snippet by its prefix
    */
   public async getSnippetContent(prefix: string): Promise<string> {
+    // eslint-disable-next-line no-console
     const snippet = this.snippets.get(prefix);
     if (snippet === undefined) {
       throw new Error(`Snippet not found: ${prefix}`);
@@ -151,6 +163,7 @@ export class SnippetService {
 
     try {
       // Read the full file to get content
+      // eslint-disable-next-line no-console
       const content = await readFile(snippet.filePath, 'utf-8');
       const data = JSON.parse(content) as Record<string, unknown>;
 
@@ -169,6 +182,7 @@ export class SnippetService {
    * Get a complete snippet including both metadata and content
    */
   public async getSnippet(prefix: string): Promise<Snippet> {
+    // eslint-disable-next-line no-console
     const snippet = this.snippets.get(prefix);
     if (snippet === undefined) {
       throw new Error(`Snippet not found: ${prefix}`);
@@ -182,24 +196,22 @@ export class SnippetService {
   }
 
   /**
-   * @deprecated Use listSnippetMetadata() instead
-   * Legacy method for backward compatibility with MCP server
-   */
-  public listSnippets(): SnippetMetadata[] {
-    return this.listSnippetMetadata();
-  }
-
-  /**
    * Search snippets by query string using full text search
    * Searches across title, description, keywords, scope, and prefix
    */
-  public searchSnippets(query: string): SnippetMetadata[] {
+  public searchSnippets(query: string, limit: number = 1): SnippetMetadata[] {
+    // eslint-disable-next-line no-console
     if (!query || query.trim().length === 0) {
       return [];
     }
 
-    const results = this.searchIndex.search(query);
-    return results.map((result) => {
+    const results = this.searchIndex.search(query, {});
+    const normalizedLimit = Number.isFinite(limit) ? Math.floor(limit) : 1;
+    if (normalizedLimit <= 0) {
+      return [];
+    }
+    // eslint-disable-next-line no-console
+    return results.slice(0, normalizedLimit).map((result) => {
       // MiniSearch returns stored fields as index signatures, requiring bracket notation
       const prefix = String(result['prefix']);
       const snippet = this.snippets.get(prefix);
