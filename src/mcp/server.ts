@@ -1,7 +1,16 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
 import { SnippetService } from '../services/snippet-service.js';
 import type { Snippet, SnippetMetadata } from '../types/snippet.js';
+import {
+  listSnippetsInputSchema,
+  getSnippetInputSchema,
+  searchSnippetsInputSchema,
+} from '../schemas/input-schemas.js';
+import {
+  listSnippetsOutputSchema,
+  getSnippetOutputSchema,
+  searchSnippetsOutputSchema,
+} from '../schemas/output-schemas.js';
 
 export class SnippetsMcpServer {
   public readonly mcpServer: McpServer;
@@ -31,7 +40,8 @@ export class SnippetsMcpServer {
       'list_snippets',
       {
         description: 'List all available code snippets',
-        inputSchema: z.object({}),
+        inputSchema: listSnippetsInputSchema,
+        outputSchema: listSnippetsOutputSchema,
       },
       () => {
         const snippets = this.snippetService.listSnippetMetadata();
@@ -42,6 +52,7 @@ export class SnippetsMcpServer {
               text: JSON.stringify(snippets, null, 2),
             },
           ],
+          structuredContent: { snippets },
         };
       },
     );
@@ -51,9 +62,8 @@ export class SnippetsMcpServer {
       'get_snippet',
       {
         description: 'Get a specific code snippet by ID',
-        inputSchema: z.object({
-          prefix: z.string().describe('The ID of the snippet to retrieve'),
-        }),
+        inputSchema: getSnippetInputSchema,
+        outputSchema: getSnippetOutputSchema,
       },
       async ({ prefix }) => {
         await this.mcpServer.sendLoggingMessage({
@@ -68,6 +78,7 @@ export class SnippetsMcpServer {
               text: JSON.stringify(snippet, null, 2),
             },
           ],
+          structuredContent: { snippet },
         };
       },
     );
@@ -77,10 +88,8 @@ export class SnippetsMcpServer {
       'search_snippets',
       {
         description: 'Search for snippets by language or tag',
-        inputSchema: z.object({
-          query: z.string().describe('Search query'),
-          limit: z.number().int().positive().optional().describe('Max results (default 1)'),
-        }),
+        inputSchema: searchSnippetsInputSchema,
+        outputSchema: searchSnippetsOutputSchema,
       },
       (args) => {
         const snippets = this.snippetService.searchSnippets(args.query, args.limit);
@@ -91,6 +100,7 @@ export class SnippetsMcpServer {
               text: JSON.stringify(snippets, null, 2),
             },
           ],
+          structuredContent: { snippets },
         };
       },
     );
