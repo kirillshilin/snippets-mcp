@@ -1,8 +1,0 @@
-{
-  "prefix": "for",
-  "title": "For Loop",
-  "keywords": ["loop", "iteration", "array"],
-  "scope": "javascript,typescript,java,c,cpp",
-  "description": "Standard for loop structure",
-  "content": "for (let i = 0; i < array.length; i++) {\n  // code block\n}"
-}

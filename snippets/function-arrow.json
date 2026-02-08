@@ -1,8 +1,0 @@
-{
-  "prefix": "arrowfn",
-  "title": "Arrow Function",
-  "keywords": ["function", "arrow", "lambda"],
-  "scope": "javascript,typescript",
-  "description": "Arrow function definition",
-  "content": "const functionName = (param) => {\n  // function body\n  return result;\n};"
-}
