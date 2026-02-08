@@ -131,6 +131,50 @@ export class SnippetsMcpServer {
   public async initialize(): Promise<void> {
     // Initialize snippet service to load all snippets
     await this.snippetService.initialize();
+
+    // Register each snippet as a resource
+    this.registerSnippetResources();
+  }
+
+  private registerSnippetResources(): void {
+    const snippets = this.snippetService.listSnippetMetadata();
+
+    for (const snippet of snippets) {
+      const uri = `snippet://${snippet.prefix}`;
+      this.mcpServer.registerResource(
+        snippet.title,
+        uri,
+        {
+          description: snippet.description,
+          mimeType: 'text/plain',
+        },
+        async () => {
+          try {
+            const fullSnippet = await this.snippetService.getSnippet(snippet.prefix);
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: 'text/plain',
+                  text: fullSnippet.content,
+                },
+              ],
+            };
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            return {
+              contents: [
+                {
+                  uri,
+                  mimeType: 'text/plain',
+                  text: `Error loading snippet: ${errorMessage}`,
+                },
+              ],
+            };
+          }
+        },
+      );
+    }
   }
 
   public listSnippetMetadata(): SnippetMetadata[] {
