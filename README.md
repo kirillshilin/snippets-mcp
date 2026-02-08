@@ -31,39 +31,39 @@ npm run dev:stdio        # Stdio server for testing
 
 ### For GitHub Copilot in VS Code
 1. Press `Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"
-2. Add:
+2. Add (replace with your actual path):
 ```json
 {
   "github.copilot.chat.mcp.servers": {
     "snippets-mcp": {
       "command": "node",
-      "args": ["path/to/snippets-mcp/dist/stdio.js"]
+      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
     }
   }
 }
 ```
 
 ### For Claude Desktop
-Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) with your actual path:
 ```json
 {
   "mcpServers": {
     "snippets-mcp": {
       "command": "node",
-      "args": ["path/to/snippets-mcp/dist/stdio.js"]
+      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
     }
   }
 }
 ```
 
 ### For Cline VS Code Extension
-Add to `.vscode/settings.json`:
+Add to `.vscode/settings.json` (replace with your actual path):
 ```json
 {
   "cline.mcpServers": {
     "snippets-mcp": {
       "command": "node",
-      "args": ["path/to/snippets-mcp/dist/stdio.js"]
+      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
     }
   }
 }
