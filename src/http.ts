@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   const app = createMcpExpressApp();
 
   // Store transports by session ID
-  const transports: Record<string, SSEServerTransport> = {};
+  const transports = new Map<string, SSEServerTransport>();
 
   // SSE endpoint - clients connect here to receive server-sent events
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
     const transport = new SSEServerTransport('/messages', res);
     await transport.start();
 
-    transports[transport.sessionId] = transport;
+    transports.set(transport.sessionId, transport);
     logInfo('SSE transport started', { sessionId: transport.sessionId });
 
     // Connect the transport to the MCP server
@@ -65,14 +65,12 @@ async function main(): Promise<void> {
     // Clean up when transport closes
     transport.onclose = (): void => {
       logInfo('SSE transport closed', { sessionId: transport.sessionId });
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete transports[transport.sessionId];
+      transports.delete(transport.sessionId);
     };
 
     transport.onerror = (error: Error): void => {
       logError('SSE transport error', error, { sessionId: transport.sessionId });
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete transports[transport.sessionId];
+      transports.delete(transport.sessionId);
     };
   });
 
@@ -81,12 +79,13 @@ async function main(): Promise<void> {
   app.post('/messages', async (req, res) => {
     const sessionId = req.query['sessionId'] as string;
 
-    if (!sessionId) {
-      res.status(400).json({ error: 'Missing sessionId query parameter' });
+    // Validate sessionId
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+      res.status(400).json({ error: 'Missing or invalid sessionId query parameter' });
       return;
     }
 
-    const transport = transports[sessionId];
+    const transport = transports.get(sessionId);
     if (!transport) {
       res.status(404).json({ error: 'Session not found' });
       return;

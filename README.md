@@ -145,9 +145,12 @@ npm run format         # Format code with Prettier
 
 ## ⚙️ Environment Variables
 
+These environment variables are used by both the REST API server (`npm start`) and the HTTP/SSE MCP server (`npm run start:http`):
+
 - `PORT` - Server port (default: 3003)
 - `HOST` - Server host (default: 127.0.0.1)
 - `NODE_ENV` - Environment (default: development)
+- `SNIPPETS_DIR` - Directory containing code snippets (default: ./snippets)
 
 ## 📄 License
 
