@@ -84,8 +84,8 @@ Add to `.vscode/settings.json` (replace with your actual path):
   - The prefix is always included as the last segment (unique identifier)
   - Examples:
     - With 2+ keywords: `snippet://loop/iteration/for-loop`
-    - With 1 keyword: `snippet://function//arrow-fn` (note the empty second keyword)
-    - With 0 keywords: `snippet:///hello` (both keywords empty)
+    - With 1 keyword: `snippet://function//arrow-fn` (empty second keyword)
+    - With 0 keywords: `snippet:////hello` (both keywords empty)
 
 Each snippet resource provides:
 - Title: The snippet name
