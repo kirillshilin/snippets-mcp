@@ -143,10 +143,10 @@ export class SnippetsMcpServer {
       // Use first 2 keywords as path to resource
       const keywordPath =
         snippet.keywords.length >= 2
-          ? `${snippet.keywords[0]}/${snippet.keywords[1]}`
+          ? `${encodeURIComponent(snippet.keywords[0]!)}/${encodeURIComponent(snippet.keywords[1]!)}`
           : snippet.keywords.length === 1
-            ? snippet.keywords[0]
-            : snippet.prefix;
+            ? encodeURIComponent(snippet.keywords[0]!)
+            : encodeURIComponent(snippet.prefix);
       const uri = `snippet://${keywordPath}`;
       this.mcpServer.registerResource(
         snippet.title,
