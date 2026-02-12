@@ -136,17 +136,22 @@ export class SnippetsMcpServer {
     this.registerSnippetResources();
   }
 
+  private getResourcePath(snippet: SnippetMetadata): string {
+    // Use first 2 keywords as path to resource, fall back to prefix if not enough keywords
+    if (snippet.keywords.length >= 2) {
+      return `${encodeURIComponent(snippet.keywords[0]!)}/${encodeURIComponent(snippet.keywords[1]!)}`;
+    }
+    if (snippet.keywords.length === 1) {
+      return encodeURIComponent(snippet.keywords[0]!);
+    }
+    return encodeURIComponent(snippet.prefix);
+  }
+
   private registerSnippetResources(): void {
     const snippets = this.snippetService.listSnippetMetadata();
 
     for (const snippet of snippets) {
-      // Use first 2 keywords as path to resource
-      const keywordPath =
-        snippet.keywords.length >= 2
-          ? `${encodeURIComponent(snippet.keywords[0]!)}/${encodeURIComponent(snippet.keywords[1]!)}`
-          : snippet.keywords.length === 1
-            ? encodeURIComponent(snippet.keywords[0]!)
-            : encodeURIComponent(snippet.prefix);
+      const keywordPath = this.getResourcePath(snippet);
       const uri = `snippet://${keywordPath}`;
       this.mcpServer.registerResource(
         snippet.title,
