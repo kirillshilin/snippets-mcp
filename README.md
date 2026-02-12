@@ -113,12 +113,30 @@ Add to `.vscode/settings.json` (replace with your actual path):
 - `GET /health` - Server health check
 - `POST /mcp` - MCP request handler
 
+## 🔍 MCP Inspector
+
+Debug your MCP server with the built-in inspector:
+
+```bash
+# Inspect stdio transport (starts the server automatically)
+npm run inspect:stdio
+
+# Inspect HTTP/SSE transport (requires server to be running separately)
+npm run start:http        # In one terminal
+npm run inspect:http      # In another terminal
+```
+
+The inspector provides a web interface to test tools, resources, and other MCP features.
+
 ## 🧰 Commands
 
 ```bash
 npm run build          # Build TypeScript
-npm start              # Start HTTP server
-npm run start:stdio    # Start stdio server
+npm start              # Start REST API server
+npm run start:stdio    # Start stdio MCP server
+npm run start:http     # Start HTTP/SSE MCP server
+npm run inspect:stdio  # Inspect stdio MCP server
+npm run inspect:http   # Inspect HTTP/SSE MCP server (requires server running)
 npm test               # Run tests
 npm run lint           # Check code with ESLint
 npm run lint:fix       # Auto-fix ESLint issues
@@ -127,9 +145,21 @@ npm run format         # Format code with Prettier
 
 ## ⚙️ Environment Variables
 
-- `PORT` - Server port (default: 3000)
-- `HOST` - Server host (default: 0.0.0.0)
+These environment variables apply to all servers:
+
+- `PORT` - Server port (default: 3003)
+- `HOST` - Server host (default: 127.0.0.1)
 - `NODE_ENV` - Environment (default: development)
+- `SNIPPETS_DIR` - Directory containing code snippets (default: ./snippets)
+
+**Note**: The REST API server (`npm start`) and HTTP/SSE MCP server (`npm run start:http`) share the same configuration. If you need to run them simultaneously, use different ports:
+```bash
+# Terminal 1: REST API on port 3003
+npm start
+
+# Terminal 2: HTTP/SSE MCP on port 3004
+PORT=3004 npm run start:http
+```
 
 ## 📄 License
 
