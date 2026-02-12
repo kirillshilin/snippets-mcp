@@ -137,14 +137,11 @@ export class SnippetsMcpServer {
   }
 
   private getResourcePath(snippet: SnippetMetadata): string {
-    // Use first 2 keywords as path to resource, fall back to prefix if not enough keywords
-    if (snippet.keywords.length >= 2) {
-      return `${encodeURIComponent(snippet.keywords[0]!)}/${encodeURIComponent(snippet.keywords[1]!)}`;
-    }
-    if (snippet.keywords.length === 1) {
-      return encodeURIComponent(snippet.keywords[0]!);
-    }
-    return encodeURIComponent(snippet.prefix);
+    // Use keyword0/keyword1/prefix format - prefix is always included as it's unique
+    const keyword0 = snippet.keywords[0] ?? '';
+    const keyword1 = snippet.keywords[1] ?? '';
+    const pathSegments = [keyword0, keyword1, snippet.prefix].map(encodeURIComponent);
+    return pathSegments.join('/');
   }
 
   private registerSnippetResources(): void {

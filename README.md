@@ -78,10 +78,14 @@ Add to `.vscode/settings.json` (replace with your actual path):
 ## 📦 Available Resources
 
 - `snippet://list` - JSON list of all snippets
-- Individual snippet content using keyword-based paths:
-  - Snippets with 2+ keywords: `snippet://{keyword1}/{keyword2}` (e.g., `snippet://loop/iteration`, `snippet://async/function`)
-  - Snippets with 1 keyword: `snippet://{keyword}` (e.g., `snippet://typescript`, `snippet://debugging`)
-  - Snippets with 0 keywords: `snippet://{prefix}` (e.g., `snippet://hello`, `snippet://for`)
+- Individual snippet content using the path format: `snippet://{keyword0}/{keyword1}/{prefix}`
+  - All snippets follow this consistent format
+  - Missing keywords are represented as empty strings in the path
+  - The prefix is always included as the last segment (unique identifier)
+  - Examples:
+    - With 2+ keywords: `snippet://loop/iteration/for-loop`
+    - With 1 keyword: `snippet://function//arrow-fn` (note the empty second keyword)
+    - With 0 keywords: `snippet:///hello` (both keywords empty)
 
 Each snippet resource provides:
 - Title: The snippet name
