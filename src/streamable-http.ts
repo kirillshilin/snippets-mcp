@@ -62,15 +62,19 @@ function main(): void {
 
       if (typeof sessionId === 'string' && sessionId in transports) {
         // Reuse existing transport
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        transport = transports[sessionId]!;
+        const existingTransport = transports[sessionId];
+        if (existingTransport === undefined) {
+          res.status(404).json({ error: 'Session not found' });
+          return;
+        }
+        transport = existingTransport;
       } else if (typeof sessionId === 'undefined' && isInitializeRequest(req.body)) {
         // New initialization request - create a new MCP server instance
         const mcpServer = await createMcpServer();
         logInfo('Created new MCP server instance for new session');
 
         transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: (): string => randomUUID(),
+          sessionIdGenerator: randomUUID,
           onsessioninitialized: (newSessionId: string): void => {
             // Store the transport by session ID when session is initialized
             logInfo('Session initialized', { sessionId: newSessionId });
@@ -149,8 +153,11 @@ function main(): void {
       logInfo('Establishing new SSE stream', { sessionId });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const transport = transports[sessionId]!;
+    const transport = transports[sessionId];
+    if (transport === undefined) {
+      res.status(404).send('Session not found');
+      return;
+    }
     await transport.handleRequest(req, res);
   };
 
