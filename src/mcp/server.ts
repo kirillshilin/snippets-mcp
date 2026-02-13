@@ -136,11 +136,20 @@ export class SnippetsMcpServer {
     this.registerSnippetResources();
   }
 
+  private getResourcePath(snippet: SnippetMetadata): string {
+    // Use keyword0/keyword1/prefix format - prefix is always included as it's unique
+    const keyword0 = snippet.keywords[0] ?? '';
+    const keyword1 = snippet.keywords[1] ?? '';
+    const pathSegments = [keyword0, keyword1, snippet.prefix].map(encodeURIComponent);
+    return pathSegments.join('/');
+  }
+
   private registerSnippetResources(): void {
     const snippets = this.snippetService.listSnippetMetadata();
 
     for (const snippet of snippets) {
-      const uri = `snippet://${snippet.prefix}`;
+      const keywordPath = this.getResourcePath(snippet);
+      const uri = `snippet://${keywordPath}`;
       this.mcpServer.registerResource(
         snippet.title,
         uri,

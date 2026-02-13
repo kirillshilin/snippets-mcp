@@ -78,35 +78,20 @@ Add to `.vscode/settings.json` (replace with your actual path):
 ## 📦 Available Resources
 
 - `snippet://list` - JSON list of all snippets
-- `snippet://{prefix}` - Individual snippet content (e.g., `snippet://hello`, `snippet://for`)
+- Individual snippet content using the path format: `snippet://{keyword0}/{keyword1}/{prefix}`
+  - All snippets follow this consistent format
+  - Missing keywords are represented as empty strings in the path
+  - The prefix is always included as the last segment (unique identifier)
+  - Examples:
+    - With 2+ keywords: `snippet://loop/iteration/for-loop`
+    - With 1 keyword: `snippet://function//arrow-fn` (empty second keyword)
+    - With 0 keywords: `snippet:////hello` (both keywords empty)
 
 Each snippet resource provides:
 - Title: The snippet name
 - Description: What the snippet does
 - Content: The actual code snippet
 - MIME type: `text/plain`
-### For Cline VS Code Extension
-Add to `.vscode/settings.json` (replace with your actual path):
-```json
-{
-  "cline.mcpServers": {
-    "snippets-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/snippets-mcp/dist/stdio.js"]
-    }
-  }
-}
-```
-
-## 🛠️ Available Tools
-
-- `list_snippets` - List all available code snippets
-- `get_snippet` - Get a specific snippet by ID
-- `search_snippets` - Search snippets by query
-
-## 📦 Available Resources
-
-- `snippet://list` - JSON list of all snippets
 
 ## 🌐 HTTP API Endpoints
 
