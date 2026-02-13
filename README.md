@@ -1,10 +1,13 @@
 # 📝 Snippets MCP Server
 
-A Model Context Protocol (MCP) server that provides access to code snippets through stdio and HTTP transport.
+A Model Context Protocol (MCP) server that provides access to code snippets through stdio, HTTP (SSE), and Streamable HTTP transport.
 
 ## ✨ Features
 
-- 🔌 MCP server with stdio and HTTP transport
+- 🔌 MCP server with multiple transport options:
+  - **Streamable HTTP** - Modern HTTP transport for VS Code and other MCP clients
+  - **SSE (Server-Sent Events)** - Traditional HTTP transport with SSE streaming
+  - **Stdio** - Process-based transport for desktop applications
 - 📚 Code snippets management
 - 🔒 TypeScript with strictest compiler settings
 - ✅ ESLint and Prettier configured
@@ -23,11 +26,33 @@ npm run build
 
 ### Development
 ```bash
-npm run dev              # HTTP server with hot reload
-npm run dev:stdio        # Stdio server for testing
+npm run dev:streamable-http  # Streamable HTTP server with hot reload
+npm run dev:http             # SSE HTTP server with hot reload
+npm run dev:stdio            # Stdio server for testing
 ```
 
 ## 🔧 Configuration
+
+### For VS Code with HTTP Transport
+
+To use HTTP transport in VS Code (supported by newer MCP clients):
+
+1. First, start the HTTP server:
+```bash
+npm run start:streamable-http
+```
+
+2. Add to your VS Code settings (Ctrl+Shift+P → "Preferences: Open User Settings (JSON)"):
+```json
+{
+  "mcp.servers": {
+    "snippets": {
+      "type": "http",
+      "url": "http://localhost:3003/mcp"
+    }
+  }
+}
+```
 
 ### For GitHub Copilot in VS Code
 1. Press `Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"
@@ -95,8 +120,16 @@ Each snippet resource provides:
 
 ## 🌐 HTTP API Endpoints
 
+### Streamable HTTP Transport (Recommended)
+- `POST /mcp` - MCP request handler (supports both initialization and regular requests)
+- `GET /mcp` - SSE stream endpoint for receiving server-initiated messages
+- `DELETE /mcp` - Session termination endpoint
 - `GET /health` - Server health check
-- `POST /mcp` - MCP request handler
+
+### SSE Transport (Legacy)
+- `GET /sse` - SSE connection endpoint
+- `POST /messages` - Message posting endpoint
+- `GET /health` - Server health check
 
 ## 🔍 MCP Inspector
 
@@ -105,6 +138,10 @@ Debug your MCP server with the built-in inspector:
 ```bash
 # Inspect stdio transport (starts the server automatically)
 npm run inspect:stdio
+
+# Inspect Streamable HTTP transport (requires server to be running separately)
+npm run start:streamable-http  # In one terminal
+npm run inspect:streamable-http  # In another terminal
 
 # Inspect HTTP/SSE transport (requires server to be running separately)
 npm run start:http        # In one terminal
@@ -116,16 +153,18 @@ The inspector provides a web interface to test tools, resources, and other MCP f
 ## 🧰 Commands
 
 ```bash
-npm run build          # Build TypeScript
-npm start              # Start REST API server
-npm run start:stdio    # Start stdio MCP server
-npm run start:http     # Start HTTP/SSE MCP server
-npm run inspect:stdio  # Inspect stdio MCP server
-npm run inspect:http   # Inspect HTTP/SSE MCP server (requires server running)
-npm test               # Run tests
-npm run lint           # Check code with ESLint
-npm run lint:fix       # Auto-fix ESLint issues
-npm run format         # Format code with Prettier
+npm run build                    # Build TypeScript
+npm start                        # Start REST API server
+npm run start:stdio              # Start stdio MCP server
+npm run start:streamable-http    # Start Streamable HTTP MCP server (recommended)
+npm run start:http               # Start HTTP/SSE MCP server (legacy)
+npm run inspect:stdio            # Inspect stdio MCP server
+npm run inspect:streamable-http  # Inspect Streamable HTTP MCP server
+npm run inspect:http             # Inspect HTTP/SSE MCP server (requires server running)
+npm test                         # Run tests
+npm run lint                     # Check code with ESLint
+npm run lint:fix                 # Auto-fix ESLint issues
+npm run format                   # Format code with Prettier
 ```
 
 ## ⚙️ Environment Variables
@@ -137,13 +176,16 @@ These environment variables apply to all servers:
 - `NODE_ENV` - Environment (default: development)
 - `SNIPPETS_DIR` - Directory containing code snippets (default: ./snippets)
 
-**Note**: The REST API server (`npm start`) and HTTP/SSE MCP server (`npm run start:http`) share the same configuration. If you need to run them simultaneously, use different ports:
+**Note**: The REST API server (`npm start`), HTTP/SSE MCP server (`npm run start:http`), and Streamable HTTP MCP server (`npm run start:streamable-http`) share the same configuration. If you need to run them simultaneously, use different ports:
 ```bash
 # Terminal 1: REST API on port 3003
 npm start
 
-# Terminal 2: HTTP/SSE MCP on port 3004
-PORT=3004 npm run start:http
+# Terminal 2: Streamable HTTP MCP on port 3004
+PORT=3004 npm run start:streamable-http
+
+# Terminal 3: HTTP/SSE MCP on port 3005
+PORT=3005 npm run start:http
 ```
 
 ## 📄 License
