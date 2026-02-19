@@ -328,7 +328,7 @@ describe('SnippetService', () => {
     });
 
     it('should search by scope', async () => {
-      const results = service.searchSnippets('typescript');
+      const results = service.searchSnippets('typescript', 10);
       expect(results.length).toBeGreaterThan(0);
       // All test snippets have typescript in scope
       expect(results.length).toBe(3);
@@ -359,6 +359,212 @@ describe('SnippetService', () => {
     it('should return no results for non-matching query', async () => {
       const results = service.searchSnippets('nonexistent-query-xyz');
       expect(results).toEqual([]);
+    });
+  });
+
+  describe('VS Code snippet format support', () => {
+    it('should load VS Code .code-snippet files', async () => {
+      // Create a VS Code format snippet file
+      const snippetPath = join(testSnippetsDir, 'angular.code-snippet');
+      const vsCodeSnippet = {
+        'Angular - ngOnChanges': {
+          scope: 'typescriptangular,typescript,ts,angular,angularts',
+          prefix: 'ngchange',
+          description: 'Creates ngOnChanges',
+          body: [
+            'ngOnChanges(changes: SimpleChanges) {',
+            "\tif(this.${1} && '${1}' in changes) {",
+            '\t\t${0}',
+            '\t}',
+            '}',
+          ],
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]).toEqual({
+        prefix: 'ngchange',
+        title: 'Angular - ngOnChanges',
+        description: 'Creates ngOnChanges',
+        scope: 'typescriptangular,typescript,ts,angular,angularts',
+        keywords: [],
+      });
+    });
+
+    it('should load multiple snippets from a single VS Code file', async () => {
+      const snippetPath = join(testSnippetsDir, 'multiple.code-snippet');
+      const vsCodeSnippets = {
+        'Print to console': {
+          scope: 'javascript,typescript',
+          prefix: 'log',
+          body: ["console.log('$1');", '$2'],
+          description: 'Log output to console',
+        },
+        'Arrow Function': {
+          scope: 'javascript,typescript',
+          prefix: 'arrowfn',
+          body: ['const ${1:name} = (${2:params}) => {', '\t$0', '}'],
+          description: 'Arrow function',
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippets, null, 2));
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(2);
+      expect(metadata.some((m) => m.prefix === 'log')).toBe(true);
+      expect(metadata.some((m) => m.prefix === 'arrowfn')).toBe(true);
+    });
+
+    it('should get content from VS Code snippets', async () => {
+      const snippetPath = join(testSnippetsDir, 'test.code-snippet');
+      const vsCodeSnippet = {
+        'Test Snippet': {
+          prefix: 'test',
+          scope: 'javascript',
+          description: 'Test',
+          body: ['line1', 'line2', 'line3'],
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const content = await service.getSnippetContent('test');
+
+      expect(content).toBe('line1\nline2\nline3');
+    });
+
+    it('should handle VS Code snippets with string body', async () => {
+      const snippetPath = join(testSnippetsDir, 'string-body.code-snippet');
+      const vsCodeSnippet = {
+        'String Body': {
+          prefix: 'strbody',
+          scope: 'javascript',
+          description: 'String body',
+          body: 'single line content',
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const content = await service.getSnippetContent('strbody');
+
+      expect(content).toBe('single line content');
+    });
+
+    it('should handle VS Code snippets with array prefix', async () => {
+      const snippetPath = join(testSnippetsDir, 'array-prefix.code-snippet');
+      const vsCodeSnippet = {
+        'Array Prefix': {
+          prefix: ['pfx1', 'pfx2'],
+          scope: 'javascript',
+          description: 'Array prefix',
+          body: ['code'],
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.prefix).toBe('pfx1');
+    });
+
+    it('should handle VS Code snippets without scope', async () => {
+      const snippetPath = join(testSnippetsDir, 'no-scope.code-snippet');
+      const vsCodeSnippet = {
+        'No Scope': {
+          prefix: 'noscope',
+          body: ['code'],
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.scope).toBe('');
+    });
+
+    it('should handle VS Code snippets without description', async () => {
+      const snippetPath = join(testSnippetsDir, 'no-description.code-snippet');
+      const vsCodeSnippet = {
+        'No Description': {
+          prefix: 'nodesc',
+          scope: 'javascript',
+          body: ['code'],
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.description).toBe('');
+    });
+
+    it('should support both .json and .code-snippet files simultaneously', async () => {
+      // Create standard format file
+      await writeFile(
+        join(testSnippetsDir, 'standard.json'),
+        JSON.stringify({
+          prefix: 'std',
+          title: 'Standard',
+          keywords: ['test'],
+          scope: 'javascript',
+          description: 'Standard format',
+          content: 'standard();',
+        }),
+      );
+
+      // Create VS Code format file
+      await writeFile(
+        join(testSnippetsDir, 'vscode.code-snippet'),
+        JSON.stringify({
+          'VS Code Snippet': {
+            prefix: 'vsc',
+            scope: 'javascript',
+            description: 'VS Code format',
+            body: ['vscode();'],
+          },
+        }),
+      );
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(2);
+      expect(metadata.some((m) => m.prefix === 'std')).toBe(true);
+      expect(metadata.some((m) => m.prefix === 'vsc')).toBe(true);
+    });
+
+    it('should skip VS Code snippets with invalid format', async () => {
+      const snippetPath = join(testSnippetsDir, 'invalid.code-snippet');
+      const vsCodeSnippet = {
+        'Valid Snippet': {
+          prefix: 'valid',
+          body: ['code'],
+        },
+        'Invalid Snippet': {
+          // Missing prefix and body
+          scope: 'javascript',
+        },
+      };
+      await writeFile(snippetPath, JSON.stringify(vsCodeSnippet, null, 2));
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.prefix).toBe('valid');
     });
   });
 });

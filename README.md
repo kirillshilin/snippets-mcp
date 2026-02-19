@@ -188,6 +188,53 @@ PORT=3004 npm run start:streamable-http
 PORT=3005 npm run start:http
 ```
 
+## 📝 Snippet Formats
+
+The server uses a modular loader architecture following the Open-Closed Principle, making it easy to add new snippet formats without modifying existing code.
+
+### Supported Formats
+
+#### Standard Format (.json)
+One snippet per file with metadata and content:
+```json
+{
+  "prefix": "log",
+  "title": "Console Log",
+  "keywords": ["console", "log", "debug"],
+  "scope": "javascript,typescript",
+  "description": "Log to console",
+  "content": "console.log('${1}');"
+}
+```
+
+#### VS Code Format (.code-snippet)
+Multiple snippets per file, compatible with VS Code's snippet format:
+```json
+{
+  "Print to console": {
+    "scope": "javascript,typescript",
+    "prefix": "log",
+    "body": [
+      "console.log('$1');",
+      "$2"
+    ],
+    "description": "Log output to console"
+  },
+  "Arrow Function": {
+    "scope": "javascript,typescript",
+    "prefix": "arrowfn",
+    "body": [
+      "const ${1:name} = (${2:params}) => {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Arrow function"
+  }
+}
+```
+
+Both formats can be used simultaneously in the same snippets directory. New formats can be added by implementing the `SnippetLoader` interface.
+
 ## 📄 License
 
 MIT

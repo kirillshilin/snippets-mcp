@@ -3,10 +3,14 @@ import { join, extname } from 'node:path';
 import MiniSearch from 'minisearch';
 import type { Snippet, SnippetMetadata } from '../types/snippet.js';
 import { config } from '../config.js';
+import type { SnippetLoader } from './loaders/index.js';
+import { StandardJsonLoader, VSCodeSnippetLoader } from './loaders/index.js';
 
 interface SnippetFile {
   metadata: SnippetMetadata;
-  filePath: string;
+  content: string | undefined; // For snippets with content in memory
+  filePath: string | undefined; // For on-demand loading
+  loader: SnippetLoader | undefined; // Loader that handles this snippet
 }
 
 export class SnippetService {
@@ -14,10 +18,17 @@ export class SnippetService {
   private readonly snippetsDir: string;
   private initialized: boolean = false;
   private searchIndex: MiniSearch<SnippetMetadata>;
+  private readonly loaders: SnippetLoader[];
 
-  constructor(snippetsDir?: string) {
+  constructor(snippetsDir?: string, loaders?: SnippetLoader[]) {
     this.snippets = new Map();
     this.snippetsDir = snippetsDir ?? config.snippetsDir;
+
+    // Initialize loaders - use provided loaders or default set
+    this.loaders = loaders ?? [
+      new VSCodeSnippetLoader(), // Try VS Code format first (works for both .json and .code-snippet)
+      new StandardJsonLoader(), // Then try standard format
+    ];
 
     // eslint-disable-next-line no-console
 
@@ -57,27 +68,49 @@ export class SnippetService {
 
       // Load metadata from each snippet file
       for (const file of files) {
-        // Skip non-JSON files
-        if (extname(file) !== '.json') {
-          // eslint-disable-next-line no-console
-          continue;
-        }
-
+        const ext = extname(file);
         const filePath = join(this.snippetsDir, file);
+
         try {
           // eslint-disable-next-line no-console
           const content = await readFile(filePath, 'utf-8');
-          const data = JSON.parse(content) as Record<string, unknown>;
 
-          // Validate and extract metadata
-          const metadata = this.parseSnippetMetadata(data);
-          const prefix = metadata.prefix;
+          // Try each loader until one succeeds
+          let loaded = false;
+          for (const loader of this.loaders) {
+            if (!loader.canHandle(filePath, ext)) {
+              continue;
+            }
 
-          // Store metadata with file path
-          this.snippets.set(prefix, {
-            metadata,
-            filePath,
-          });
+            try {
+              const snippets = loader.loadSnippets(filePath, content);
+              if (snippets.length > 0) {
+                // Store all snippets from this loader
+                for (const snippet of snippets) {
+                  this.snippets.set(snippet.metadata.prefix, {
+                    metadata: snippet.metadata,
+                    content: snippet.content, // May be undefined for on-demand loading
+                    filePath: snippet.filePath, // For on-demand loading
+                    loader, // Store the loader for on-demand content retrieval
+                  });
+                }
+                loaded = true;
+                break; // Stop trying other loaders
+              }
+            } catch (error) {
+              // Log the error but continue to next loader
+              const loaderName = loader.constructor.name;
+              console.error(
+                `Loader ${loaderName} failed to process ${file}:`,
+                error instanceof Error ? error.message : error,
+              );
+              continue;
+            }
+          }
+
+          if (!loaded) {
+            // eslint-disable-next-line no-console
+          }
           // eslint-disable-next-line no-console
         } catch (error) {
           console.error(`Failed to load snippet from ${file}:`, error);
@@ -107,43 +140,6 @@ export class SnippetService {
   }
 
   /**
-   * Parse and validate snippet metadata from raw data
-   */
-  private parseSnippetMetadata(data: Record<string, unknown>): SnippetMetadata {
-    // eslint-disable-next-line no-console
-    if (typeof data['prefix'] !== 'string' || data['prefix'].length === 0) {
-      throw new Error('Invalid or missing prefix field');
-    }
-    if (typeof data['title'] !== 'string' || data['title'].length === 0) {
-      throw new Error('Invalid or missing title field');
-    }
-    if (typeof data['description'] !== 'string') {
-      throw new Error('Invalid or missing description field');
-    }
-    if (typeof data['scope'] !== 'string') {
-      throw new Error('Invalid or missing scope field');
-    }
-
-    // Keywords can be array or undefined
-    let keywords: string[] = [];
-    if (data['keywords'] !== undefined) {
-      if (Array.isArray(data['keywords'])) {
-        keywords = data['keywords'].filter((k): k is string => typeof k === 'string');
-      } else {
-        throw new Error('Invalid keywords field - must be an array');
-      }
-    }
-
-    return {
-      prefix: data['prefix'],
-      title: data['title'],
-      description: data['description'],
-      scope: data['scope'],
-      keywords,
-    };
-  }
-
-  /**
    * Get list of all snippet metadata (without content)
    */
   public listSnippetMetadata(): SnippetMetadata[] {
@@ -161,21 +157,20 @@ export class SnippetService {
       throw new Error(`Snippet not found: ${prefix}`);
     }
 
-    try {
-      // Read the full file to get content
-      // eslint-disable-next-line no-console
-      const content = await readFile(snippet.filePath, 'utf-8');
-      const data = JSON.parse(content) as Record<string, unknown>;
-
-      if (typeof data['content'] !== 'string') {
-        throw new Error('Invalid or missing content field');
-      }
-
-      return data['content'];
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Failed to read snippet content for ${prefix}: ${errorMessage}`);
+    // If content is already in memory, return it
+    if (snippet.content !== undefined) {
+      return snippet.content;
     }
+
+    // Otherwise, load on-demand using the loader
+    if (snippet.loader?.getContent && snippet.filePath) {
+      const content = await snippet.loader.getContent(snippet.filePath, prefix);
+      if (content !== undefined) {
+        return content;
+      }
+    }
+
+    throw new Error(`Unable to load content for snippet: ${prefix}`);
   }
 
   /**
