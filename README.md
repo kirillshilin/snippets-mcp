@@ -190,9 +190,11 @@ PORT=3005 npm run start:http
 
 ## 📝 Snippet Formats
 
-The server supports two snippet file formats:
+The server uses a modular loader architecture following the Open-Closed Principle, making it easy to add new snippet formats without modifying existing code.
 
-### Standard Format (.json)
+### Supported Formats
+
+#### Standard Format (.json)
 One snippet per file with metadata and content:
 ```json
 {
@@ -205,7 +207,7 @@ One snippet per file with metadata and content:
 }
 ```
 
-### VS Code Format (.code-snippet)
+#### VS Code Format (.code-snippet)
 Multiple snippets per file, compatible with VS Code's snippet format:
 ```json
 {
@@ -231,7 +233,7 @@ Multiple snippets per file, compatible with VS Code's snippet format:
 }
 ```
 
-Both formats can be used simultaneously in the same snippets directory.
+Both formats can be used simultaneously in the same snippets directory. New formats can be added by implementing the `SnippetLoader` interface.
 
 ## 📄 License
 
