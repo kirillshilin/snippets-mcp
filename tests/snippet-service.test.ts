@@ -370,7 +370,7 @@ describe('SnippetService', () => {
         'Angular - ngOnChanges': {
           scope: 'typescriptangular,typescript,ts,angular,angularts',
           prefix: 'ngchange',
-          description: 'Creates ngOnChange',
+          description: 'Creates ngOnChanges',
           body: [
             'ngOnChanges(changes: SimpleChanges) {',
             "\tif(this.${1} && '${1}' in changes) {",
@@ -389,7 +389,7 @@ describe('SnippetService', () => {
       expect(metadata[0]).toEqual({
         prefix: 'ngchange',
         title: 'Angular - ngOnChanges',
-        description: 'Creates ngOnChange',
+        description: 'Creates ngOnChanges',
         scope: 'typescriptangular,typescript,ts,angular,angularts',
         keywords: [],
       });
