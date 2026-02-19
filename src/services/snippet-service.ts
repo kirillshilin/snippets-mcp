@@ -7,6 +7,8 @@ import { config } from '../config.js';
 interface SnippetFile {
   metadata: SnippetMetadata;
   filePath: string;
+  content?: string; // For VS Code snippets, content is stored in memory
+  snippetKey?: string; // For VS Code snippets, the key in the file
 }
 
 export class SnippetService {
@@ -57,8 +59,9 @@ export class SnippetService {
 
       // Load metadata from each snippet file
       for (const file of files) {
-        // Skip non-JSON files
-        if (extname(file) !== '.json') {
+        const ext = extname(file);
+        // Support both .json and .code-snippet files
+        if (ext !== '.json' && ext !== '.code-snippet') {
           // eslint-disable-next-line no-console
           continue;
         }
@@ -69,15 +72,21 @@ export class SnippetService {
           const content = await readFile(filePath, 'utf-8');
           const data = JSON.parse(content) as Record<string, unknown>;
 
-          // Validate and extract metadata
-          const metadata = this.parseSnippetMetadata(data);
-          const prefix = metadata.prefix;
+          // Check if this is a VS Code snippet file (multiple snippets)
+          if (this.isVSCodeSnippetFile(data)) {
+            // Parse VS Code snippet format
+            this.loadVSCodeSnippets(data, filePath);
+          } else {
+            // Parse standard format (single snippet per file)
+            const metadata = this.parseSnippetMetadata(data);
+            const prefix = metadata.prefix;
 
-          // Store metadata with file path
-          this.snippets.set(prefix, {
-            metadata,
-            filePath,
-          });
+            // Store metadata with file path
+            this.snippets.set(prefix, {
+              metadata,
+              filePath,
+            });
+          }
           // eslint-disable-next-line no-console
         } catch (error) {
           console.error(`Failed to load snippet from ${file}:`, error);
@@ -144,6 +153,99 @@ export class SnippetService {
   }
 
   /**
+   * Check if data represents a VS Code snippet file format
+   * VS Code snippets don't have 'prefix' and 'title' at top level
+   */
+  private isVSCodeSnippetFile(data: Record<string, unknown>): boolean {
+    // If it has prefix and title at top level, it's standard format
+    if ('prefix' in data && 'title' in data) {
+      return false;
+    }
+
+    // Check if it looks like VS Code format (snippets as nested objects)
+    for (const key of Object.keys(data)) {
+      const value = data[key];
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const snippet = value as Record<string, unknown>;
+        // VS Code snippets have 'body' field
+        if ('body' in snippet) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Load VS Code format snippets from a file
+   */
+  private loadVSCodeSnippets(data: Record<string, unknown>, filePath: string): void {
+    for (const [snippetName, snippetData] of Object.entries(data)) {
+      // Skip if not an object
+      if (typeof snippetData !== 'object' || snippetData === null || Array.isArray(snippetData)) {
+        continue;
+      }
+
+      try {
+        const snippet = snippetData as Record<string, unknown>;
+
+        // Parse prefix - can be string or array
+        let prefix: string;
+        if (typeof snippet['prefix'] === 'string') {
+          prefix = snippet['prefix'];
+        } else if (Array.isArray(snippet['prefix']) && snippet['prefix'].length > 0) {
+          // Use first prefix if array
+          prefix = String(snippet['prefix'][0]);
+        } else {
+          // eslint-disable-next-line no-console
+          continue;
+        }
+
+        // Parse scope - default to empty string if not present
+        const scope = typeof snippet['scope'] === 'string' ? snippet['scope'] : '';
+
+        // Parse description - default to empty string if not present
+        const description =
+          typeof snippet['description'] === 'string' ? snippet['description'] : '';
+
+        // Parse body - must be string array
+        let content: string;
+        if (Array.isArray(snippet['body'])) {
+          content = snippet['body']
+            .filter((line): line is string => typeof line === 'string')
+            .join('\n');
+        } else if (typeof snippet['body'] === 'string') {
+          content = snippet['body'];
+        } else {
+          // eslint-disable-next-line no-console
+          continue;
+        }
+
+        // Create metadata
+        const metadata: SnippetMetadata = {
+          prefix,
+          title: snippetName, // Use snippet name as title
+          description,
+          scope,
+          keywords: [], // VS Code format doesn't have keywords
+        };
+
+        // Store with content in memory
+        this.snippets.set(prefix, {
+          metadata,
+          filePath,
+          content, // Store content directly for VS Code snippets
+          snippetKey: snippetName,
+        });
+      } catch (error) {
+        console.error(`Failed to parse snippet ${snippetName} from ${filePath}:`, error);
+        // Continue with other snippets
+      }
+    }
+  }
+
+  /**
    * Get list of all snippet metadata (without content)
    */
   public listSnippetMetadata(): SnippetMetadata[] {
@@ -161,8 +263,13 @@ export class SnippetService {
       throw new Error(`Snippet not found: ${prefix}`);
     }
 
+    // If content is already stored (VS Code snippet), return it
+    if (snippet.content !== undefined) {
+      return snippet.content;
+    }
+
     try {
-      // Read the full file to get content
+      // Read the full file to get content (standard format)
       // eslint-disable-next-line no-console
       const content = await readFile(snippet.filePath, 'utf-8');
       const data = JSON.parse(content) as Record<string, unknown>;
