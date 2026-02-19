@@ -98,7 +98,12 @@ export class SnippetService {
                 break; // Stop trying other loaders
               }
             } catch (error) {
-              // Continue to next loader if this one fails
+              // Log the error but continue to next loader
+              const loaderName = loader.constructor.name;
+              console.error(
+                `Loader ${loaderName} failed to process ${file}:`,
+                error instanceof Error ? error.message : error,
+              );
               continue;
             }
           }

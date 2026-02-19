@@ -5,7 +5,7 @@ import type { SnippetMetadata } from '../../types/snippet.js';
 /**
  * Loader for standard JSON snippet format
  * One snippet per file with all metadata and content in a single JSON object
- * Content is loaded on-demand from file
+ * Content is loaded on-demand to allow file modifications to be reflected
  */
 export class StandardJsonLoader implements SnippetLoader {
   canHandle(_filePath: string, fileExtension: string): boolean {
