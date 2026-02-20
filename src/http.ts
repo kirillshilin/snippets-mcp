@@ -2,6 +2,7 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { SnippetsMcpServer } from './mcp/server.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { config } from './config.js';
+import { bearerAuthMiddleware } from './auth.js';
 
 type LogContext = Record<string, unknown>;
 
@@ -49,7 +50,7 @@ async function main(): Promise<void> {
 
   // SSE endpoint - clients connect here to receive server-sent events
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  app.get('/sse', async (_req, res) => {
+  app.get('/sse', bearerAuthMiddleware, async (_req, res) => {
     logInfo('SSE connection request received');
 
     const transport = new SSEServerTransport('/messages', res);
@@ -76,7 +77,7 @@ async function main(): Promise<void> {
 
   // Message endpoint - clients POST messages here
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  app.post('/messages', async (req, res) => {
+  app.post('/messages', bearerAuthMiddleware, async (req, res) => {
     const sessionId = req.query['sessionId'] as string;
 
     // Validate sessionId
