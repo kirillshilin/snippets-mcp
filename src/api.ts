@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { SnippetsMcpServer } from './mcp/server.js';
+import { bearerAuthMiddleware } from './auth.js';
 
 // Zod schemas for request validation
 const SearchQuerySchema = z.object({
@@ -33,6 +34,7 @@ export async function createServer(): Promise<Express> {
   });
 
   // Snippets API endpoints
+  app.use('/api', bearerAuthMiddleware);
   app.get('/api/snippets', (_req: Request, res: Response): void => {
     const snippets = mcpServer.listSnippetMetadata();
     res.json({ snippets });

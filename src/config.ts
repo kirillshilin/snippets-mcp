@@ -5,6 +5,7 @@ export interface Config {
   host: string;
   environment: string;
   snippetsDir: string;
+  authToken: string | undefined;
 }
 
 export const config: Config = {
@@ -18,4 +19,8 @@ export const config: Config = {
     (process.env['SNIPPETS_DIR'] ?? '').length > 0
       ? (process.env['SNIPPETS_DIR'] as string)
       : join(process.cwd(), 'snippets'),
+  authToken:
+    (process.env['AUTH_TOKEN'] ?? '').length > 0
+      ? (process.env['AUTH_TOKEN'] as string)
+      : undefined,
 };

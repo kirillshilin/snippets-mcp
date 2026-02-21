@@ -175,6 +175,7 @@ These environment variables apply to all servers:
 - `HOST` - Server host (default: 127.0.0.1)
 - `NODE_ENV` - Environment (default: development)
 - `SNIPPETS_DIR` - Directory containing code snippets (default: ./snippets)
+- `AUTH_TOKEN` - Optional bearer token for HTTP authentication. When set, all HTTP MCP and API endpoints require an `Authorization: Bearer <token>` header. The `/health` endpoint remains publicly accessible. Leave unset to disable authentication.
 
 **Note**: The REST API server (`npm start`), HTTP/SSE MCP server (`npm run start:http`), and Streamable HTTP MCP server (`npm run start:streamable-http`) share the same configuration. If you need to run them simultaneously, use different ports:
 ```bash

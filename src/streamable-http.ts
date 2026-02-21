@@ -5,6 +5,7 @@ import { SnippetsMcpServer } from './mcp/server.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { config } from './config.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { bearerAuthMiddleware } from './auth.js';
 
 type LogContext = Record<string, unknown>;
 
@@ -134,7 +135,7 @@ function main(): void {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  app.post('/mcp', mcpPostHandler);
+  app.post('/mcp', bearerAuthMiddleware, mcpPostHandler);
 
   // Handle GET requests for SSE streams
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -162,10 +163,10 @@ function main(): void {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  app.get('/mcp', mcpGetHandler);
+  app.get('/mcp', bearerAuthMiddleware, mcpGetHandler);
 
   // Handle DELETE requests for session termination
-  app.delete('/mcp', (req, res): void => {
+  app.delete('/mcp', bearerAuthMiddleware, (req, res): void => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
     if (typeof sessionId !== 'string') {
