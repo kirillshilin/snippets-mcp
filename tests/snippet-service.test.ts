@@ -567,4 +567,154 @@ describe('SnippetService', () => {
       expect(metadata[0]?.prefix).toBe('valid');
     });
   });
+
+  describe('Markdown snippet format support', () => {
+    const makeMarkdown = (
+      frontMatter: string,
+      codeBlock: string,
+      lang: string = 'javascript',
+    ): string => `---\n${frontMatter}\n---\n\`\`\`${lang}\n${codeBlock}\n\`\`\`\n`;
+
+    it('should load a basic .md snippet file', async () => {
+      const content = makeMarkdown(
+        'prefix: mdsnip\ntitle: MD Snippet\nscope: javascript\ndescription: A markdown snippet\nkeywords: md, test',
+        'console.log("md");',
+      );
+      await writeFile(join(testSnippetsDir, 'basic.md'), content);
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]).toEqual({
+        prefix: 'mdsnip',
+        title: 'MD Snippet',
+        scope: 'javascript',
+        description: 'A markdown snippet',
+        keywords: ['md', 'test'],
+      });
+    });
+
+    it('should return content from the first code block', async () => {
+      const code = 'const x = 42;';
+      const content = makeMarkdown(
+        'prefix: mdcontent\ntitle: MD Content\nscope: typescript\ndescription: Content test',
+        code,
+        'typescript',
+      );
+      await writeFile(join(testSnippetsDir, 'content.md'), content);
+
+      await service.initialize();
+      const retrieved = await service.getSnippetContent('mdcontent');
+
+      expect(retrieved).toBe(code);
+    });
+
+    it('should support YAML inline array syntax for keywords', async () => {
+      const content = makeMarkdown(
+        'prefix: inlinekeys\ntitle: Inline Keys\nscope: javascript\ndescription: Inline keywords\nkeywords: [foo, bar, baz]',
+        'foo();',
+      );
+      await writeFile(join(testSnippetsDir, 'inline-keys.md'), content);
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.keywords).toEqual(['foo', 'bar', 'baz']);
+    });
+
+    it('should handle missing optional fields with defaults', async () => {
+      const content = makeMarkdown(
+        'prefix: minimal\ntitle: Minimal',
+        'minimal();',
+      );
+      await writeFile(join(testSnippetsDir, 'minimal.md'), content);
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]).toEqual({
+        prefix: 'minimal',
+        title: 'Minimal',
+        scope: '',
+        description: '',
+        keywords: [],
+      });
+    });
+
+    it('should skip .md files without front matter', async () => {
+      await writeFile(join(testSnippetsDir, 'no-frontmatter.md'), '# Just a heading\nsome text');
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toEqual([]);
+    });
+
+    it('should skip .md files without a code block', async () => {
+      const content = '---\nprefix: nocode\ntitle: No Code\n---\nJust text, no code block.\n';
+      await writeFile(join(testSnippetsDir, 'no-code.md'), content);
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toEqual([]);
+    });
+
+    it('should skip .md files missing prefix', async () => {
+      const content = makeMarkdown('title: No Prefix\nscope: javascript\ndescription: Missing prefix', 'code();');
+      await writeFile(join(testSnippetsDir, 'no-prefix.md'), content);
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toEqual([]);
+    });
+
+    it('should read content on-demand from .md file', async () => {
+      const mdPath = join(testSnippetsDir, 'ondemand.md');
+      await writeFile(
+        mdPath,
+        makeMarkdown('prefix: ondemand\ntitle: On Demand\nscope: javascript\ndescription: Test', 'original();'),
+      );
+
+      await service.initialize();
+
+      // Modify the file after initialization
+      await writeFile(
+        mdPath,
+        makeMarkdown('prefix: ondemand\ntitle: On Demand\nscope: javascript\ndescription: Test', 'modified();'),
+      );
+
+      const retrieved = await service.getSnippetContent('ondemand');
+      expect(retrieved).toBe('modified();');
+    });
+
+    it('should load .md alongside .json snippets', async () => {
+      await writeFile(
+        join(testSnippetsDir, 'json-snip.json'),
+        JSON.stringify({
+          prefix: 'jsonsnip',
+          title: 'JSON Snippet',
+          keywords: [],
+          scope: 'javascript',
+          description: 'JSON format',
+          content: 'json();',
+        }),
+      );
+      await writeFile(
+        join(testSnippetsDir, 'md-snip.md'),
+        makeMarkdown('prefix: mdsnip2\ntitle: MD Snippet 2\nscope: javascript\ndescription: MD format', 'md();'),
+      );
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata();
+
+      expect(metadata).toHaveLength(2);
+      expect(metadata.some((m) => m.prefix === 'jsonsnip')).toBe(true);
+      expect(metadata.some((m) => m.prefix === 'mdsnip2')).toBe(true);
+    });
+  });
 });

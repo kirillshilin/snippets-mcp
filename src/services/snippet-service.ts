@@ -4,7 +4,7 @@ import MiniSearch from 'minisearch';
 import type { Snippet, SnippetMetadata } from '../types/snippet.js';
 import { config } from '../config.js';
 import type { SnippetLoader } from './loaders/index.js';
-import { StandardJsonLoader, VSCodeSnippetLoader } from './loaders/index.js';
+import { StandardJsonLoader, VSCodeSnippetLoader, MarkdownLoader } from './loaders/index.js';
 
 interface SnippetFile {
   metadata: SnippetMetadata;
@@ -28,6 +28,7 @@ export class SnippetService {
     this.loaders = loaders ?? [
       new VSCodeSnippetLoader(), // Try VS Code format first (works for both .json and .code-snippet)
       new StandardJsonLoader(), // Then try standard format
+      new MarkdownLoader(), // Markdown files with YAML front matter
     ];
 
     // eslint-disable-next-line no-console
