@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { z } from 'zod';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { SnippetsMcpServer } from './mcp/server.js';
 import { bearerAuthMiddleware } from './auth.js';
 
@@ -21,6 +22,34 @@ const SnippetPrefixSchema = z.object({
   prefix: z.string().min(1, 'Snippet prefix is required'),
 });
 
+type LogContext = Record<string, unknown>;
+
+function formatContext(context?: LogContext): string {
+  if (!context || Object.keys(context).length === 0) {
+    return '';
+  }
+  try {
+    return ` ${JSON.stringify(context)}`;
+  } catch {
+    return ' {"context":"unserializable"}';
+  }
+}
+
+function logInfo(message: string, context?: LogContext): void {
+  // eslint-disable-next-line no-console
+  console.log(`[${new Date().toISOString()}] INFO ${message}${formatContext(context)}`);
+}
+
+function logError(message: string, error?: unknown, context?: LogContext): void {
+  const errorPayload =
+    error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack }
+      : error;
+  const mergedContext = errorPayload != null ? { ...context, error: errorPayload } : context;
+  // eslint-disable-next-line no-console
+  console.error(`[${new Date().toISOString()}] ERROR ${message}${formatContext(mergedContext)}`);
+}
+
 export async function createServer(): Promise<Express> {
   const app = express();
 
@@ -28,6 +57,9 @@ export async function createServer(): Promise<Express> {
 
   const mcpServer = new SnippetsMcpServer();
   await mcpServer.initialize();
+
+  // Store SSE transports by session ID
+  const transports = new Map<string, SSEServerTransport>();
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response): void => {
@@ -84,16 +116,57 @@ export async function createServer(): Promise<Express> {
     }
   });
 
-  // MCP endpoints
-  app.post('/mcp', (req: Request, res: Response): void => {
+  // SSE endpoint - clients connect here to receive server-sent events
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  app.get('/sse', bearerAuthMiddleware, async (_req, res) => {
+    logInfo('SSE connection request received');
+
+    const transport = new SSEServerTransport('/messages', res);
+    await transport.start();
+
+    transports.set(transport.sessionId, transport);
+    logInfo('SSE transport started', { sessionId: transport.sessionId });
+
+    await mcpServer.mcpServer.connect(transport);
+    logInfo('MCP server connected to SSE transport', { sessionId: transport.sessionId });
+
+    transport.onclose = (): void => {
+      logInfo('SSE transport closed', { sessionId: transport.sessionId });
+      transports.delete(transport.sessionId);
+    };
+
+    transport.onerror = (error: Error): void => {
+      logError('SSE transport error', error, { sessionId: transport.sessionId });
+      transports.delete(transport.sessionId);
+    };
+  });
+
+  // Message endpoint - clients POST messages here
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  app.post('/messages', bearerAuthMiddleware, async (req, res) => {
+    const sessionId = req.query['sessionId'] as string;
+
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+      res.status(400).json({ error: 'Missing or invalid sessionId query parameter' });
+      return;
+    }
+
+    const transport = transports.get(sessionId);
+    if (!transport) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
     try {
-      const result = mcpServer.handleRequest(req.body);
-      res.json(result);
+      await transport.handlePostMessage(req, res);
     } catch (error) {
-      res.status(500).json({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logError('Error handling POST message', error, { sessionId });
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     }
   });
 
