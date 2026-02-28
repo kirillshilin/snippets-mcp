@@ -14,6 +14,7 @@ const SearchQuerySchema = z.object({
     .refine((val) => Number.isFinite(val) && val > 0, {
       message: 'Query parameter "limit" must be a valid positive number',
     }),
+  scope: z.string().optional(),
 });
 
 const SnippetPrefixSchema = z.object({
@@ -42,8 +43,8 @@ export async function createServer(): Promise<Express> {
 
   app.get('/api/snippets/search', (req: Request, res: Response): void => {
     try {
-      const { q: query, limit } = SearchQuerySchema.parse(req.query);
-      const results = mcpServer.searchSnippetMetadata(query, limit);
+      const { q: query, limit, scope } = SearchQuerySchema.parse(req.query);
+      const results = mcpServer.searchSnippetMetadata(query, limit, scope);
       res.json({ query, results, limit });
     } catch (error) {
       if (error instanceof z.ZodError) {

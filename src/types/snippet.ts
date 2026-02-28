@@ -2,7 +2,7 @@ export interface SnippetMetadata {
   prefix: string; // Key used to trigger snippet
   title: string;
   keywords: string[];
-  scope: string; // Comma-separated languages or file extensions
+  scope: string[]; // Languages or file extensions
   description: string;
 }
 

@@ -48,7 +48,7 @@ describe('Output Schemas', () => {
     prefix: 'test',
     title: 'Test Snippet',
     keywords: ['test'],
-    scope: 'javascript',
+    scope: ['javascript'],
     description: 'A test snippet',
   };
 

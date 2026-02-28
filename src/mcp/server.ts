@@ -16,7 +16,7 @@ export class SnippetsMcpServer {
   public readonly mcpServer: McpServer;
   private snippetService: SnippetService;
 
-  constructor() {
+  constructor(options?: { snippetsDir?: string }) {
     this.mcpServer = new McpServer(
       {
         name: 'snippets-mcp',
@@ -30,7 +30,7 @@ export class SnippetsMcpServer {
       },
     );
 
-    this.snippetService = new SnippetService();
+    this.snippetService = new SnippetService(options?.snippetsDir);
     this.setupHandlers();
   }
 
@@ -92,7 +92,7 @@ export class SnippetsMcpServer {
         outputSchema: searchSnippetsOutputSchema,
       },
       (args) => {
-        const snippets = this.snippetService.searchSnippets(args.query, args.limit);
+        const snippets = this.snippetService.searchSnippets(args.query, args.limit, args.scope);
         return {
           content: [
             {
@@ -190,8 +190,8 @@ export class SnippetsMcpServer {
     return this.snippetService.listSnippetMetadata();
   }
 
-  public searchSnippetMetadata(query: string, limit?: number): SnippetMetadata[] {
-    return this.snippetService.searchSnippets(query, limit);
+  public searchSnippetMetadata(query: string, limit?: number, scope?: string): SnippetMetadata[] {
+    return this.snippetService.searchSnippets(query, limit, scope);
   }
 
   public async getSnippet(prefix: string): Promise<Snippet> {

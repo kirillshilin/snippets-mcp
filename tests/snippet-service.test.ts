@@ -47,7 +47,7 @@ describe('SnippetService', () => {
         prefix: 'test',
         title: 'Test Snippet',
         keywords: ['test', 'example'],
-        scope: 'javascript,typescript',
+        scope: ['javascript', 'typescript'],
         description: 'A test snippet',
       });
     });
@@ -133,7 +133,7 @@ describe('SnippetService', () => {
         prefix: 'test',
         title: 'Test',
         keywords: ['test'],
-        scope: 'javascript',
+        scope: ['javascript'],
         description: 'Test snippet',
       });
     });
@@ -244,7 +244,7 @@ describe('SnippetService', () => {
         prefix: 'test',
         title: 'Test Snippet',
         keywords: ['test'],
-        scope: 'javascript',
+        scope: ['javascript'],
         description: 'A test snippet',
         content: 'console.log("test");',
       };
@@ -390,7 +390,7 @@ describe('SnippetService', () => {
         prefix: 'ngchange',
         title: 'Angular - ngOnChanges',
         description: 'Creates ngOnChanges',
-        scope: 'typescriptangular,typescript,ts,angular,angularts',
+        scope: ['typescriptangular', 'typescript', 'ts', 'angular', 'angularts'],
         keywords: [],
       });
     });
@@ -490,7 +490,7 @@ describe('SnippetService', () => {
       const metadata = service.listSnippetMetadata();
 
       expect(metadata).toHaveLength(1);
-      expect(metadata[0]?.scope).toBe('');
+      expect(metadata[0]?.scope).toEqual([]);
     });
 
     it('should handle VS Code snippets without description', async () => {
@@ -589,7 +589,7 @@ describe('SnippetService', () => {
       expect(metadata[0]).toEqual({
         prefix: 'mdsnip',
         title: 'MD Snippet',
-        scope: 'javascript',
+        scope: ['javascript'],
         description: 'A markdown snippet',
         keywords: ['md', 'test'],
       });
@@ -625,10 +625,7 @@ describe('SnippetService', () => {
     });
 
     it('should handle missing optional fields with defaults', async () => {
-      const content = makeMarkdown(
-        'prefix: minimal\ntitle: Minimal',
-        'minimal();',
-      );
+      const content = makeMarkdown('prefix: minimal\ntitle: Minimal', 'minimal();');
       await writeFile(join(testSnippetsDir, 'minimal.md'), content);
 
       await service.initialize();
@@ -638,7 +635,7 @@ describe('SnippetService', () => {
       expect(metadata[0]).toEqual({
         prefix: 'minimal',
         title: 'Minimal',
-        scope: '',
+        scope: [],
         description: '',
         keywords: [],
       });
@@ -664,7 +661,10 @@ describe('SnippetService', () => {
     });
 
     it('should skip .md files missing prefix', async () => {
-      const content = makeMarkdown('title: No Prefix\nscope: javascript\ndescription: Missing prefix', 'code();');
+      const content = makeMarkdown(
+        'title: No Prefix\nscope: javascript\ndescription: Missing prefix',
+        'code();',
+      );
       await writeFile(join(testSnippetsDir, 'no-prefix.md'), content);
 
       await service.initialize();
@@ -677,7 +677,10 @@ describe('SnippetService', () => {
       const mdPath = join(testSnippetsDir, 'ondemand.md');
       await writeFile(
         mdPath,
-        makeMarkdown('prefix: ondemand\ntitle: On Demand\nscope: javascript\ndescription: Test', 'original();'),
+        makeMarkdown(
+          'prefix: ondemand\ntitle: On Demand\nscope: javascript\ndescription: Test',
+          'original();',
+        ),
       );
 
       await service.initialize();
@@ -685,7 +688,10 @@ describe('SnippetService', () => {
       // Modify the file after initialization
       await writeFile(
         mdPath,
-        makeMarkdown('prefix: ondemand\ntitle: On Demand\nscope: javascript\ndescription: Test', 'modified();'),
+        makeMarkdown(
+          'prefix: ondemand\ntitle: On Demand\nscope: javascript\ndescription: Test',
+          'modified();',
+        ),
       );
 
       const retrieved = await service.getSnippetContent('ondemand');
@@ -706,7 +712,10 @@ describe('SnippetService', () => {
       );
       await writeFile(
         join(testSnippetsDir, 'md-snip.md'),
-        makeMarkdown('prefix: mdsnip2\ntitle: MD Snippet 2\nscope: javascript\ndescription: MD format', 'md();'),
+        makeMarkdown(
+          'prefix: mdsnip2\ntitle: MD Snippet 2\nscope: javascript\ndescription: MD format',
+          'md();',
+        ),
       );
 
       await service.initialize();

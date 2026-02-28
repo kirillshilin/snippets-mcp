@@ -18,4 +18,8 @@ export const getSnippetInputSchema = z.object({
 export const searchSnippetsInputSchema = z.object({
   query: z.string().describe('Search query'),
   limit: z.number().int().positive().optional().describe('Max results (default 1)'),
+  scope: z
+    .string()
+    .optional()
+    .describe('Exact scope filter (language or file extension, e.g. ts, .ts, typescript)'),
 });

@@ -7,7 +7,7 @@ export const snippetMetadataSchema = z.object({
   prefix: z.string().describe('Key used to trigger snippet'),
   title: z.string().describe('Title of the snippet'),
   keywords: z.array(z.string()).describe('Keywords associated with the snippet'),
-  scope: z.string().describe('Comma-separated languages or file extensions'),
+  scope: z.array(z.string()).describe('Languages or file extensions'),
   description: z.string().describe('Description of the snippet'),
 });
 

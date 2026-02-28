@@ -42,8 +42,8 @@ export class VSCodeSnippetLoader implements SnippetLoader {
           continue;
         }
 
-        // Parse scope - default to empty string if not present
-        const scope = typeof snippet['scope'] === 'string' ? snippet['scope'] : '';
+        // Parse scope - default to empty array if not present
+        const scope = this.parseScope(snippet['scope']);
 
         // Parse description - default to empty string if not present
         const description =
@@ -107,5 +107,16 @@ export class VSCodeSnippetLoader implements SnippetLoader {
     }
 
     return false;
+  }
+
+  private parseScope(raw: unknown): string[] {
+    if (typeof raw !== 'string') {
+      return [];
+    }
+
+    return raw
+      .split(',')
+      .map((scope) => scope.trim())
+      .filter((scope) => scope.length > 0);
   }
 }

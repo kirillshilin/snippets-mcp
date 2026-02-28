@@ -1,5 +1,6 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SnippetsMcpServer } from './mcp/server.js';
+import { resolveSnippetsDirFromArgv } from './config.js';
 
 type LogContext = Record<string, unknown>;
 
@@ -38,7 +39,8 @@ function logError(message: string, error?: unknown, context?: LogContext): void 
 
 async function main(): Promise<void> {
   logInfo('Starting MCP stdio server');
-  const server = new SnippetsMcpServer();
+  const snippetsDir = resolveSnippetsDirFromArgv(process.argv);
+  const server = new SnippetsMcpServer(snippetsDir ? { snippetsDir } : undefined);
   logInfo('Initializing MCP server');
   await server.initialize();
   logInfo('MCP server initialized');

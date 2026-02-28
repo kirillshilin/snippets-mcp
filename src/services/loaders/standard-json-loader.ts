@@ -31,7 +31,8 @@ export class StandardJsonLoader implements SnippetLoader {
     if (typeof data['description'] !== 'string') {
       throw new Error('Invalid or missing description field');
     }
-    if (typeof data['scope'] !== 'string') {
+    const scope = this.parseScope(data['scope']);
+    if (scope.length === 0) {
       throw new Error('Invalid or missing scope field');
     }
     if (typeof data['content'] !== 'string') {
@@ -52,7 +53,7 @@ export class StandardJsonLoader implements SnippetLoader {
       prefix: data['prefix'],
       title: data['title'],
       description: data['description'],
-      scope: data['scope'],
+      scope,
       keywords,
     };
 
@@ -81,5 +82,20 @@ export class StandardJsonLoader implements SnippetLoader {
     } catch {
       return undefined;
     }
+  }
+
+  private parseScope(raw: unknown): string[] {
+    if (Array.isArray(raw)) {
+      return raw.filter((scope): scope is string => typeof scope === 'string' && scope.length > 0);
+    }
+
+    if (typeof raw === 'string') {
+      return raw
+        .split(',')
+        .map((scope) => scope.trim())
+        .filter((scope) => scope.length > 0);
+    }
+
+    return [];
   }
 }

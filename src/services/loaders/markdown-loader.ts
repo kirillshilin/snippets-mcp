@@ -81,7 +81,7 @@ export class MarkdownLoader implements SnippetLoader {
       return null;
     }
 
-    const scope = fields['scope'] ?? '';
+    const scope = this.parseScope(fields['scope']);
     const description = fields['description'] ?? '';
     const keywords = this.parseKeywords(fields['keywords']);
 
@@ -138,6 +138,30 @@ export class MarkdownLoader implements SnippetLoader {
       .split(',')
       .map((k) => k.trim())
       .filter((k) => k.length > 0);
+  }
+
+  /**
+   * Parse scope from a string.
+   * Supports comma-separated values and YAML inline arrays: [a, b, c]
+   */
+  private parseScope(raw: string | undefined): string[] {
+    if (!raw) {
+      return [];
+    }
+
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map((scope) => scope.trim())
+        .filter((scope) => scope.length > 0);
+    }
+
+    return trimmed
+      .split(',')
+      .map((scope) => scope.trim())
+      .filter((scope) => scope.length > 0);
   }
 
   /**

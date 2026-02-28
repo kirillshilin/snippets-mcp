@@ -57,78 +57,9 @@ export class SnippetService {
 
     try {
       // eslint-disable-next-line no-console
-      // Check if snippets directory exists
-      const dirStats = await stat(this.snippetsDir);
-      if (!dirStats.isDirectory()) {
-        throw new Error(`Snippets path is not a directory: ${this.snippetsDir}`);
-      }
-
-      // Read all files in the snippets directory
-      const files = await readdir(this.snippetsDir);
-      // eslint-disable-next-line no-console
-
-      // Load metadata from each snippet file
-      for (const file of files) {
-        const ext = extname(file);
-        const filePath = join(this.snippetsDir, file);
-
-        try {
-          // eslint-disable-next-line no-console
-          const content = await readFile(filePath, 'utf-8');
-
-          // Try each loader until one succeeds
-          let loaded = false;
-          for (const loader of this.loaders) {
-            if (!loader.canHandle(filePath, ext)) {
-              continue;
-            }
-
-            try {
-              const snippets = loader.loadSnippets(filePath, content);
-              if (snippets.length > 0) {
-                // Store all snippets from this loader
-                for (const snippet of snippets) {
-                  this.snippets.set(snippet.metadata.prefix, {
-                    metadata: snippet.metadata,
-                    content: snippet.content, // May be undefined for on-demand loading
-                    filePath: snippet.filePath, // For on-demand loading
-                    loader, // Store the loader for on-demand content retrieval
-                  });
-                }
-                loaded = true;
-                break; // Stop trying other loaders
-              }
-            } catch (error) {
-              // Log the error but continue to next loader
-              const loaderName = loader.constructor.name;
-              console.error(
-                `Loader ${loaderName} failed to process ${file}:`,
-                error instanceof Error ? error.message : error,
-              );
-              continue;
-            }
-          }
-
-          if (!loaded) {
-            // eslint-disable-next-line no-console
-          }
-          // eslint-disable-next-line no-console
-        } catch (error) {
-          console.error(`Failed to load snippet from ${file}:`, error);
-          // Continue loading other snippets
-        }
-      }
-
-      this.initialized = true;
-
-      // Index all snippets for search after loading
-      if (this.snippets.size > 0) {
-        const allMetadata = Array.from(this.snippets.values(), (s) => s.metadata);
-        this.searchIndex.addAll(allMetadata);
-        // eslint-disable-next-line no-console
-      } else {
-        // eslint-disable-next-line no-console
-      }
+      await this.assertSnippetsDir();
+      await this.loadSnippetsFromDir(this.snippetsDir);
+      this.finalizeIndex();
     } catch (error) {
       // If directory doesn't exist, just initialize with empty snippets
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -137,6 +68,81 @@ export class SnippetService {
         return;
       }
       throw error;
+    }
+  }
+
+  private async assertSnippetsDir(): Promise<void> {
+    const dirStats = await stat(this.snippetsDir);
+    if (!dirStats.isDirectory()) {
+      throw new Error(`Snippets path is not a directory: ${this.snippetsDir}`);
+    }
+  }
+
+  private async loadSnippetsFromDir(dirPath: string): Promise<void> {
+    const entries = await readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        await this.loadSnippetsFromDir(entryPath);
+        continue;
+      }
+      if (entry.isFile()) {
+        await this.loadSnippetsFromFile(entryPath, entry.name);
+      }
+    }
+  }
+
+  private async loadSnippetsFromFile(filePath: string, fileName: string): Promise<void> {
+    const ext = extname(fileName);
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      await this.tryLoadWithLoaders(filePath, fileName, ext, content);
+    } catch (error) {
+      console.error(`Failed to load snippet from ${fileName}:`, error);
+    }
+  }
+
+  private async tryLoadWithLoaders(
+    filePath: string,
+    fileName: string,
+    ext: string,
+    content: string,
+  ): Promise<void> {
+    for (const loader of this.loaders) {
+      if (!loader.canHandle(filePath, ext)) {
+        continue;
+      }
+
+      try {
+        const snippets = loader.loadSnippets(filePath, content);
+        if (snippets.length > 0) {
+          for (const snippet of snippets) {
+            this.snippets.set(snippet.metadata.prefix, {
+              metadata: snippet.metadata,
+              content: snippet.content,
+              filePath: snippet.filePath,
+              loader,
+            });
+          }
+          return;
+        }
+      } catch (error) {
+        const loaderName = loader.constructor.name;
+        console.error(
+          `Loader ${loaderName} failed to process ${fileName}:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
+  }
+
+  private finalizeIndex(): void {
+    this.initialized = true;
+
+    if (this.snippets.size > 0) {
+      const allMetadata = Array.from(this.snippets.values(), (s) => s.metadata);
+      this.searchIndex.addAll(allMetadata);
     }
   }
 
@@ -195,7 +201,7 @@ export class SnippetService {
    * Search snippets by query string using full text search
    * Searches across title, description, keywords, scope, and prefix
    */
-  public searchSnippets(query: string, limit: number = 1): SnippetMetadata[] {
+  public searchSnippets(query: string, limit: number = 1, scope?: string): SnippetMetadata[] {
     // eslint-disable-next-line no-console
     if (!query || query.trim().length === 0) {
       return [];
@@ -206,15 +212,41 @@ export class SnippetService {
     if (normalizedLimit <= 0) {
       return [];
     }
-    // eslint-disable-next-line no-console
-    return results.slice(0, normalizedLimit).map((result) => {
+    const normalizedScope = scope?.trim().toLowerCase();
+    const normalizedScopeToken = normalizedScope?.startsWith('.')
+      ? normalizedScope.slice(1)
+      : normalizedScope;
+
+    const matches: SnippetMetadata[] = [];
+    for (const result of results) {
+      if (matches.length >= normalizedLimit) {
+        break;
+      }
+
       // MiniSearch returns stored fields as index signatures, requiring bracket notation
       const prefix = String(result['prefix']);
       const snippet = this.snippets.get(prefix);
       if (snippet === undefined) {
         throw new Error(`Search index out of sync: snippet ${prefix} not found`);
       }
-      return snippet.metadata;
-    });
+
+      if (normalizedScopeToken && !this.matchesScope(snippet.metadata.scope, normalizedScopeToken)) {
+        continue;
+      }
+
+      matches.push(snippet.metadata);
+    }
+
+    // eslint-disable-next-line no-console
+    return matches;
+  }
+
+  private matchesScope(scopes: string[], target: string): boolean {
+    const normalizedTarget = target.toLowerCase();
+    return scopes
+      .map((scope) => scope.trim().toLowerCase())
+      .filter((scope) => scope.length > 0)
+      .map((scope) => (scope.startsWith('.') ? scope.slice(1) : scope))
+      .includes(normalizedTarget);
   }
 }
