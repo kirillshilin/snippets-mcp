@@ -6,36 +6,7 @@ import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js
 import { config } from './config.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { bearerAuthMiddleware } from './auth.js';
-
-type LogContext = Record<string, unknown>;
-
-function formatContext(context?: LogContext): string {
-  if (!context || Object.keys(context).length === 0) {
-    return '';
-  }
-
-  try {
-    return ` ${JSON.stringify(context)}`;
-  } catch {
-    return ' {"context":"unserializable"}';
-  }
-}
-
-function logInfo(message: string, context?: LogContext): void {
-  // eslint-disable-next-line no-console
-  console.log(`[${new Date().toISOString()}] INFO ${message}${formatContext(context)}`);
-}
-
-function logError(message: string, error?: unknown, context?: LogContext): void {
-  const errorPayload =
-    error instanceof Error
-      ? { name: error.name, message: error.message, stack: error.stack }
-      : error;
-  const mergedContext = errorPayload != null ? { ...context, error: errorPayload } : context;
-
-  // eslint-disable-next-line no-console
-  console.error(`[${new Date().toISOString()}] ERROR ${message}${formatContext(mergedContext)}`);
-}
+import { logInfo, logError } from './utils/logger.js';
 
 function main(): void {
   logInfo('Starting MCP Streamable HTTP server');

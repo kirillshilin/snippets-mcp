@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { SnippetsMcpServer } from './mcp/server.js';
 import { bearerAuthMiddleware } from './auth.js';
+import { logInfo, logError } from './utils/logger.js';
 
 // Zod schemas for request validation
 const SearchQuerySchema = z.object({
@@ -21,34 +22,6 @@ const SearchQuerySchema = z.object({
 const SnippetPrefixSchema = z.object({
   prefix: z.string().min(1, 'Snippet prefix is required'),
 });
-
-type LogContext = Record<string, unknown>;
-
-function formatContext(context?: LogContext): string {
-  if (!context || Object.keys(context).length === 0) {
-    return '';
-  }
-  try {
-    return ` ${JSON.stringify(context)}`;
-  } catch {
-    return ' {"context":"unserializable"}';
-  }
-}
-
-function logInfo(message: string, context?: LogContext): void {
-  // eslint-disable-next-line no-console
-  console.log(`[${new Date().toISOString()}] INFO ${message}${formatContext(context)}`);
-}
-
-function logError(message: string, error?: unknown, context?: LogContext): void {
-  const errorPayload =
-    error instanceof Error
-      ? { name: error.name, message: error.message, stack: error.stack }
-      : error;
-  const mergedContext = errorPayload != null ? { ...context, error: errorPayload } : context;
-  // eslint-disable-next-line no-console
-  console.error(`[${new Date().toISOString()}] ERROR ${message}${formatContext(mergedContext)}`);
-}
 
 export async function createServer(): Promise<Express> {
   const app = express();
