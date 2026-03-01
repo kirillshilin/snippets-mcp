@@ -138,6 +138,37 @@ Once you find a relevant snippet, adapt it to fit the current project:
       }),
     );
 
+    // Register list_snippets_for_language prompt
+    this.mcpServer.registerPrompt(
+      'list_snippets_for_language',
+      {
+        title: 'List snippets for a language',
+        description:
+          'Lists all available snippets for a specific programming language so you can review what is available and retrieve the actual code',
+        argsSchema: {
+          language: z.string().describe('The programming language to list snippets for'),
+        },
+      },
+      ({ language }) => ({
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `Please use the list_snippets tool to retrieve all available snippets, then show me only the snippets for the "${language}" language (match against the scope or keywords fields).
+
+For each matching snippet, display:
+- prefix (ID used to retrieve the full snippet)
+- title
+- description
+
+After listing them, let me know I can ask you to retrieve the full code for any snippet using its prefix.`,
+            },
+          },
+        ],
+      }),
+    );
+
     // Register snippets list resource
     this.mcpServer.registerResource(
       'All Snippets',
