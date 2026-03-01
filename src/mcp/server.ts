@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import { SnippetService } from '../services/snippet-service.js';
 import type { Snippet, SnippetMetadata } from '../types/snippet.js';
 import {
@@ -26,6 +27,7 @@ export class SnippetsMcpServer {
         capabilities: {
           tools: {},
           resources: {},
+          prompts: {},
         },
       },
     );
@@ -103,6 +105,37 @@ export class SnippetsMcpServer {
           structuredContent: { snippets },
         };
       },
+    );
+
+    // Register use_snippet prompt
+    this.mcpServer.registerPrompt(
+      'use_snippet',
+      {
+        title: 'Use a snippet for a task',
+        description:
+          'Suggests searching for an appropriate snippet and adapting it to the current project',
+        argsSchema: {
+          task: z.string().describe('The task or feature you want to implement'),
+        },
+      },
+      ({ task }) => ({
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `I need to implement the following: ${task}
+
+Please use the search_snippets tool to find an appropriate snippet for this task.
+Once you find a relevant snippet, adapt it to fit the current project:
+- Replace any placeholder values with project-specific values
+- If the snippet contains colors or styling, adapt them to match the project's color schema and design system
+- Adjust any naming conventions to match the project's coding style
+- Make sure the snippet integrates properly with the existing codebase`,
+            },
+          },
+        ],
+      }),
     );
 
     // Register snippets list resource
