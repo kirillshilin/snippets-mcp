@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { SnippetService } from '../services/snippet-service.js';
@@ -13,9 +16,19 @@ import {
   searchSnippetsOutputSchema,
 } from '../schemas/output-schemas.js';
 
+const DEFAULT_TOOL_DESCRIPTIONS = {
+  list_snippets:
+    'List available code snippets as an overview (prefix, title, description). Optionally filter by scope (language or file type). Use this to review which snippets are available.',
+  get_snippet:
+    'Get the full content of a specific code snippet by its prefix (unique ID). Use after identifying the right snippet via list_snippets or search_snippets.',
+  search_snippets:
+    'Full-text search across snippet titles, descriptions, keywords, and scope to find matching candidates for a given request.',
+};
+
 export class SnippetsMcpServer {
   public readonly mcpServer: McpServer;
   private snippetService: SnippetService;
+  private toolDescriptions = { ...DEFAULT_TOOL_DESCRIPTIONS };
 
   constructor(options?: { snippetsDir?: string }) {
     this.mcpServer = new McpServer(
@@ -33,7 +46,6 @@ export class SnippetsMcpServer {
     );
 
     this.snippetService = new SnippetService(options?.snippetsDir);
-    this.setupHandlers();
   }
 
   private setupHandlers(): void {
@@ -41,8 +53,7 @@ export class SnippetsMcpServer {
     this.mcpServer.registerTool(
       'list_snippets',
       {
-        description:
-          'List available code snippets as an overview (prefix, title, description). Optionally filter by scope (language or file type). Use this to review which snippets are available.',
+        description: this.toolDescriptions.list_snippets,
         inputSchema: listSnippetsInputSchema,
         outputSchema: listSnippetsOutputSchema,
       },
@@ -69,7 +80,7 @@ export class SnippetsMcpServer {
     this.mcpServer.registerTool(
       'get_snippet',
       {
-        description: 'Get a specific code snippet by ID',
+        description: this.toolDescriptions.get_snippet,
         inputSchema: getSnippetInputSchema,
         outputSchema: getSnippetOutputSchema,
       },
@@ -95,7 +106,7 @@ export class SnippetsMcpServer {
     this.mcpServer.registerTool(
       'search_snippets',
       {
-        description: 'Search for snippets by language or tag',
+        description: this.toolDescriptions.search_snippets,
         inputSchema: searchSnippetsInputSchema,
         outputSchema: searchSnippetsOutputSchema,
       },
@@ -199,11 +210,32 @@ After listing them, let me know I can ask you to retrieve the full code for any 
   }
 
   public async initialize(): Promise<void> {
+    // Load tool descriptions from assets markdown files
+    await this.loadToolDescriptions();
+
+    // Register tools and handlers with the loaded descriptions
+    this.setupHandlers();
+
     // Initialize snippet service to load all snippets
     await this.snippetService.initialize();
 
     // Register each snippet as a resource
     this.registerSnippetResources();
+  }
+
+  private async loadToolDescriptions(): Promise<void> {
+    const descriptionsDir = join(
+      fileURLToPath(new URL('../../assets/descriptions', import.meta.url)),
+    );
+    const tools = ['list_snippets', 'get_snippet', 'search_snippets'] as const;
+    for (const tool of tools) {
+      try {
+        const content = await readFile(join(descriptionsDir, `${tool}.md`), 'utf-8');
+        this.toolDescriptions[tool] = content;
+      } catch {
+        // Keep the default description if the file cannot be read
+      }
+    }
   }
 
   private toMarkdownTable(snippets: SnippetMetadata[]): string {
