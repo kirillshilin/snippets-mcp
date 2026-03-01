@@ -7,7 +7,9 @@ export const listSnippetsInputSchema = z.object({
   scope: z
     .string()
     .optional()
-    .describe('Filter by scope (language or file extension, e.g. ts, .ts, typescript)'),
+    .describe(
+      'Filter by scope (language or file extension, e.g. ts, .ts, typescript). Infer from the open file extension, the project type, or the language of the majority of files in the project.',
+    ),
 });
 
 /**
@@ -26,5 +28,7 @@ export const searchSnippetsInputSchema = z.object({
   scope: z
     .string()
     .optional()
-    .describe('Exact scope filter (language or file extension, e.g. ts, .ts, typescript)'),
+    .describe(
+      'Exact scope filter (language or file extension, e.g. ts, .ts, typescript). Infer from the open file extension, the project type, or the language of the majority of files in the project.',
+    ),
 });
