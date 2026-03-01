@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { SnippetService } from '../services/snippet-service.js';
@@ -27,10 +28,9 @@ const DEFAULT_TOOL_DESCRIPTIONS = {
 export class SnippetsMcpServer {
   public readonly mcpServer: McpServer;
   private snippetService: SnippetService;
-  private readonly assetsDir: string;
   private toolDescriptions = { ...DEFAULT_TOOL_DESCRIPTIONS };
 
-  constructor(options?: { snippetsDir?: string; assetsDir?: string }) {
+  constructor(options?: { snippetsDir?: string }) {
     this.mcpServer = new McpServer(
       {
         name: 'snippets-mcp',
@@ -46,7 +46,6 @@ export class SnippetsMcpServer {
     );
 
     this.snippetService = new SnippetService(options?.snippetsDir);
-    this.assetsDir = options?.assetsDir ?? join(process.cwd(), 'assets');
   }
 
   private setupHandlers(): void {
@@ -194,13 +193,14 @@ Once you find a relevant snippet, adapt it to fit the current project:
   }
 
   private async loadToolDescriptions(): Promise<void> {
+    const descriptionsDir = join(
+      fileURLToPath(new URL('../../assets/descriptions', import.meta.url)),
+    );
     const tools = ['list_snippets', 'get_snippet', 'search_snippets'] as const;
     for (const tool of tools) {
       try {
-        const raw = await readFile(join(this.assetsDir, `${tool}.md`), 'utf-8');
-        // Strip the leading "# title" heading line so only the body is used as description
-        const body = raw.replace(/^#[^\n]*\n+/, '').trim();
-        this.toolDescriptions[tool] = body;
+        const content = await readFile(join(descriptionsDir, `${tool}.md`), 'utf-8');
+        this.toolDescriptions[tool] = content;
       } catch {
         // Keep the default description if the file cannot be read
       }
