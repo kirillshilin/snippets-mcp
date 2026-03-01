@@ -18,11 +18,11 @@ import {
 
 const DEFAULT_TOOL_DESCRIPTIONS = {
   list_snippets:
-    'List available code snippets as an overview (prefix, title, description). Optionally filter by scope (language or file type). Use this to review which snippets are available.',
+    'List available code snippets as an overview (prefix, title, description). Optionally filter by scope (language or file type). Infer scope from the open file, the project type, or the majority of files in the project. Use this to review which snippets are available.',
   get_snippet:
     'Get the full content of a specific code snippet by its prefix (unique ID). Use after identifying the right snippet via list_snippets or search_snippets.',
   search_snippets:
-    'Full-text search across snippet titles, descriptions, keywords, and scope to find matching candidates for a given request.',
+    'Full-text search across snippet titles, descriptions, keywords, and scope to find matching candidates for a given request. Infer scope from the open file, the project type, or the majority of files in the project.',
 };
 
 export class SnippetsMcpServer {

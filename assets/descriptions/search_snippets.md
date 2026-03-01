@@ -8,6 +8,16 @@ Performs full-text search across snippet titles, descriptions, keywords, and sco
 - **Keyword exploration**: Search by technology, concept, or pattern (e.g., `modal`, `button`, `form validation`, `navigation`) to discover relevant snippets.
 - **Language-scoped search**: Combine a query with a `scope` filter (e.g., `typescript`, `css`) to narrow results to snippets for the current language or file type.
 
+## Determining Scope
+
+When deciding which scope value to pass, infer it in the following order of priority:
+
+1. **Open file**: Use the language or extension of the file currently open in the editor (e.g. a `.tsx` file → `typescriptreact`, a `.css` file → `css`).
+2. **Project type**: Use the primary language of the project (e.g. a TypeScript project → `typescript`, a Python project → `python`).
+3. **Majority of files**: If there is no single open file, look at the language of the majority of source files in the project and use that as the scope.
+
+If the scope cannot be determined, omit it to search across all languages.
+
 ## Recommended Workflow
 
 1. For a given user prompt, extract key concepts or technologies to craft a focused search query.
