@@ -201,14 +201,14 @@ export class SnippetService {
    * Search snippets by query string using full text search
    * Searches across title, description, keywords, scope, and prefix
    */
-  public searchSnippets(query: string, limit: number = 1, scope?: string): SnippetMetadata[] {
+  public searchSnippets(query: string, limit: number = 5, scope?: string): SnippetMetadata[] {
     // eslint-disable-next-line no-console
     if (!query || query.trim().length === 0) {
       return [];
     }
 
     const results = this.searchIndex.search(query, {});
-    const normalizedLimit = Number.isFinite(limit) ? Math.floor(limit) : 1;
+    const normalizedLimit = Number.isFinite(limit) ? Math.floor(limit) : 5;
     if (normalizedLimit <= 0) {
       return [];
     }
@@ -230,7 +230,10 @@ export class SnippetService {
         throw new Error(`Search index out of sync: snippet ${prefix} not found`);
       }
 
-      if (normalizedScopeToken && !this.matchesScope(snippet.metadata.scope, normalizedScopeToken)) {
+      if (
+        normalizedScopeToken &&
+        !this.matchesScope(snippet.metadata.scope, normalizedScopeToken)
+      ) {
         continue;
       }
 
