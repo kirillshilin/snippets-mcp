@@ -18,7 +18,19 @@ A Model Context Protocol (MCP) server that provides access to code snippets thro
 ### Prerequisites
 - Node.js >= 18.0.0
 
-### Installation
+### Install from npm (recommended)
+
+```bash
+# Run directly without installing
+npx snippets-mcp
+
+# Or install globally
+npm install -g snippets-mcp
+snippets-mcp
+```
+
+### Install from source
+
 ```bash
 npm install
 npm run build
@@ -56,7 +68,19 @@ npm run start:streamable-http
 
 ### For GitHub Copilot in VS Code
 1. Press `Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"
-2. Add (replace with your actual path):
+2. Add:
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "snippets-mcp": {
+      "command": "npx",
+      "args": ["-y", "snippets-mcp"]
+    }
+  }
+}
+```
+
+Or if you have cloned the repo locally (replace with your actual path):
 ```json
 {
   "github.copilot.chat.mcp.servers": {
@@ -69,7 +93,19 @@ npm run start:streamable-http
 ```
 
 ### For Claude Desktop
-Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) with your actual path:
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
+```json
+{
+  "mcpServers": {
+    "snippets-mcp": {
+      "command": "npx",
+      "args": ["-y", "snippets-mcp"]
+    }
+  }
+}
+```
+
+Or if you have cloned the repo locally (replace with your actual path):
 ```json
 {
   "mcpServers": {
@@ -82,7 +118,19 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Appli
 ```
 
 ### For Cline VS Code Extension
-Add to `.vscode/settings.json` (replace with your actual path):
+Add to `.vscode/settings.json`:
+```json
+{
+  "cline.mcpServers": {
+    "snippets-mcp": {
+      "command": "npx",
+      "args": ["-y", "snippets-mcp"]
+    }
+  }
+}
+```
+
+Or if you have cloned the repo locally (replace with your actual path):
 ```json
 {
   "cline.mcpServers": {
@@ -239,3 +287,7 @@ Both formats can be used simultaneously in the same snippets directory. New form
 ## 📄 License
 
 MIT
+
+## 🚢 Publishing & Distribution
+
+Maintainers can find a step-by-step guide for publishing to npm and Docker in [PUBLISHING.md](./PUBLISHING.md).
