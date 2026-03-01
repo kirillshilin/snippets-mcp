@@ -19,11 +19,20 @@ export const snippetSchema = snippetMetadataSchema.extend({
 });
 
 /**
+ * Schema for snippet overview (prefix, title, description only)
+ */
+export const snippetOverviewSchema = z.object({
+  prefix: z.string().describe('Key used to trigger snippet'),
+  title: z.string().describe('Title of the snippet'),
+  description: z.string().describe('Description of the snippet'),
+});
+
+/**
  * Output schema for list_snippets tool
- * Returns an array of snippet metadata wrapped in an object
+ * Returns an array of snippet overviews (prefix, title, description) wrapped in an object
  */
 export const listSnippetsOutputSchema = z.object({
-  snippets: z.array(snippetMetadataSchema),
+  snippets: z.array(snippetOverviewSchema),
 });
 
 /**

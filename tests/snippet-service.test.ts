@@ -168,6 +168,77 @@ describe('SnippetService', () => {
 
       expect(metadata).toHaveLength(2);
     });
+
+    it('should filter snippets by scope', async () => {
+      await writeFile(
+        join(testSnippetsDir, 'js-snip.json'),
+        JSON.stringify({
+          prefix: 'jssnip',
+          title: 'JS Snippet',
+          keywords: [],
+          scope: 'javascript',
+          description: 'JavaScript snippet',
+          content: 'js();',
+        }),
+      );
+
+      await writeFile(
+        join(testSnippetsDir, 'ts-snip.json'),
+        JSON.stringify({
+          prefix: 'tssnip',
+          title: 'TS Snippet',
+          keywords: [],
+          scope: 'typescript',
+          description: 'TypeScript snippet',
+          content: 'ts();',
+        }),
+      );
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata('typescript');
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.prefix).toBe('tssnip');
+    });
+
+    it('should filter snippets by scope with dot prefix', async () => {
+      await writeFile(
+        join(testSnippetsDir, 'ts-snip.json'),
+        JSON.stringify({
+          prefix: 'tssnip',
+          title: 'TS Snippet',
+          keywords: [],
+          scope: 'ts',
+          description: 'TypeScript snippet',
+          content: 'ts();',
+        }),
+      );
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata('.ts');
+
+      expect(metadata).toHaveLength(1);
+      expect(metadata[0]?.prefix).toBe('tssnip');
+    });
+
+    it('should return empty array when no snippets match the scope', async () => {
+      await writeFile(
+        join(testSnippetsDir, 'js-snip.json'),
+        JSON.stringify({
+          prefix: 'jssnip',
+          title: 'JS Snippet',
+          keywords: [],
+          scope: 'javascript',
+          description: 'JavaScript snippet',
+          content: 'js();',
+        }),
+      );
+
+      await service.initialize();
+      const metadata = service.listSnippetMetadata('python');
+
+      expect(metadata).toEqual([]);
+    });
   });
 
   describe('getSnippetContent', () => {

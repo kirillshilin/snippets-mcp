@@ -41,20 +41,26 @@ export class SnippetsMcpServer {
     this.mcpServer.registerTool(
       'list_snippets',
       {
-        description: 'List all available code snippets',
+        description:
+          'List available code snippets as an overview (prefix, title, description). Optionally filter by scope (language or file type). Use this to review which snippets are available.',
         inputSchema: listSnippetsInputSchema,
         outputSchema: listSnippetsOutputSchema,
       },
-      () => {
-        const snippets = this.snippetService.listSnippetMetadata();
+      ({ scope }) => {
+        const snippets = this.snippetService.listSnippetMetadata(scope);
+        const overview = snippets.map(({ prefix, title, description }) => ({
+          prefix,
+          title,
+          description,
+        }));
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(snippets, null, 2),
+              text: this.toMarkdownTable(snippets),
             },
           ],
-          structuredContent: { snippets },
+          structuredContent: { snippets: overview },
         };
       },
     );
@@ -169,6 +175,18 @@ Once you find a relevant snippet, adapt it to fit the current project:
     this.registerSnippetResources();
   }
 
+  private toMarkdownTable(snippets: SnippetMetadata[]): string {
+    if (snippets.length === 0) {
+      return 'No snippets found.';
+    }
+    const escape = (s: string): string => s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+    const header = '| Prefix | Title | Description |\n|--------|-------|-------------|';
+    const rows = snippets.map(
+      (s) => `| ${escape(s.prefix)} | ${escape(s.title)} | ${escape(s.description)} |`,
+    );
+    return [header, ...rows].join('\n');
+  }
+
   private getResourcePath(snippet: SnippetMetadata): string {
     // Use keyword0/keyword1/prefix format - prefix is always included as it's unique
     const keyword0 = snippet.keywords[0] ?? '';
@@ -219,8 +237,8 @@ Once you find a relevant snippet, adapt it to fit the current project:
     }
   }
 
-  public listSnippetMetadata(): SnippetMetadata[] {
-    return this.snippetService.listSnippetMetadata();
+  public listSnippetMetadata(scope?: string): SnippetMetadata[] {
+    return this.snippetService.listSnippetMetadata(scope);
   }
 
   public searchSnippetMetadata(query: string, limit?: number, scope?: string): SnippetMetadata[] {
