@@ -3,7 +3,12 @@ import { z } from 'zod';
 /**
  * Input schema for list_snippets tool
  */
-export const listSnippetsInputSchema = z.object({});
+export const listSnippetsInputSchema = z.object({
+  scope: z
+    .string()
+    .optional()
+    .describe('Filter by scope (language or file extension, e.g. ts, .ts, typescript)'),
+});
 
 /**
  * Input schema for get_snippet tool

@@ -5,6 +5,7 @@ import {
 } from '../src/schemas/input-schemas';
 import {
   snippetMetadataSchema,
+  snippetOverviewSchema,
   snippetSchema,
   listSnippetsOutputSchema,
   getSnippetOutputSchema,
@@ -14,6 +15,11 @@ import {
 describe('Input Schemas', () => {
   it('should validate list_snippets input (empty object)', () => {
     const result = listSnippetsInputSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate list_snippets input with scope', () => {
+    const result = listSnippetsInputSchema.safeParse({ scope: 'typescript' });
     expect(result.success).toBe(true);
   });
 
@@ -60,6 +66,20 @@ describe('Output Schemas', () => {
   it('should validate snippet metadata', () => {
     const result = snippetMetadataSchema.safeParse(mockSnippetMetadata);
     expect(result.success).toBe(true);
+  });
+
+  it('should validate snippet overview (prefix, title, description)', () => {
+    const result = snippetOverviewSchema.safeParse({
+      prefix: 'test',
+      title: 'Test Snippet',
+      description: 'A test snippet',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject snippet overview missing required fields', () => {
+    const result = snippetOverviewSchema.safeParse({ prefix: 'test' });
+    expect(result.success).toBe(false);
   });
 
   it('should validate complete snippet', () => {

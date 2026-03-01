@@ -147,11 +147,20 @@ export class SnippetService {
   }
 
   /**
-   * Get list of all snippet metadata (without content)
+   * Get list of all snippet metadata (without content), optionally filtered by scope
    */
-  public listSnippetMetadata(): SnippetMetadata[] {
-    // eslint-disable-next-line no-console
-    return Array.from(this.snippets.values()).map((snippet) => snippet.metadata);
+  public listSnippetMetadata(scope?: string): SnippetMetadata[] {
+    const allSnippets = Array.from(this.snippets.values()).map((snippet) => snippet.metadata);
+    if (!scope) {
+      return allSnippets;
+    }
+    const normalizedScope = scope.trim().toLowerCase();
+    const normalizedScopeToken = normalizedScope.startsWith('.')
+      ? normalizedScope.slice(1)
+      : normalizedScope;
+    return allSnippets.filter((metadata) =>
+      this.matchesScope(metadata.scope, normalizedScopeToken),
+    );
   }
 
   /**
