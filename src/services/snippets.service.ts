@@ -22,7 +22,11 @@ export class SnippetService {
   private searchIndex: ISearchIndex<SnippetMetadata>;
   private readonly loaders: SnippetLoader[];
 
-  constructor(snippetsDir?: string, loaders?: SnippetLoader[], searchIndex?: ISearchIndex<SnippetMetadata>) {
+  constructor(
+    snippetsDir?: string,
+    loaders?: SnippetLoader[],
+    searchIndex?: ISearchIndex<SnippetMetadata>,
+  ) {
     this.snippets = new Map();
     this.snippetsDir = snippetsDir ?? config.snippetsDir;
 
@@ -32,16 +36,18 @@ export class SnippetService {
       new MarkdownLoader(),
     ];
 
-    this.searchIndex = searchIndex ?? new MiniSearchAdapter<SnippetMetadata & Record<string, unknown>>({
-      fields: ['title', 'description', 'keywords', 'scope', 'prefix'],
-      storeFields: ['prefix', 'title', 'description', 'scope', 'keywords'],
-      idField: 'prefix',
-      searchOptions: {
-        boost: { title: 2, keywords: 1.5 },
-        fuzzy: 0.2,
-        prefix: true,
-      },
-    }) as ISearchIndex<SnippetMetadata>;
+    this.searchIndex =
+      searchIndex ??
+      (new MiniSearchAdapter<SnippetMetadata & Record<string, unknown>>({
+        fields: ['title', 'description', 'keywords', 'scope', 'prefix'],
+        storeFields: ['prefix', 'title', 'description', 'scope', 'keywords'],
+        idField: 'prefix',
+        searchOptions: {
+          boost: { title: 2, keywords: 1.5 },
+          fuzzy: 0.2,
+          prefix: true,
+        },
+      }) as ISearchIndex<SnippetMetadata>);
   }
 
   public async initialize(): Promise<void> {
@@ -204,7 +210,10 @@ export class SnippetService {
         throw new Error(`Search index out of sync: snippet ${prefix} not found`);
       }
 
-      if (normalizedScopeToken !== undefined && !matchesScope(snippet.metadata.scope, normalizedScopeToken)) {
+      if (
+        normalizedScopeToken !== undefined &&
+        !matchesScope(snippet.metadata.scope, normalizedScopeToken)
+      ) {
         continue;
       }
 

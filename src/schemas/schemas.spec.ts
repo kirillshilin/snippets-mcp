@@ -1,20 +1,7 @@
-import {
-  listSnippetsInputSchema,
-  listSnippetsOutputSchema,
-} from './list-snippets.schema.js';
-import {
-  getSnippetInputSchema,
-  getSnippetOutputSchema,
-} from './get-snippet.schema.js';
-import {
-  searchSnippetsInputSchema,
-  searchSnippetsOutputSchema,
-} from './search-snippets.schema.js';
-import {
-  snippetMetadataSchema,
-  snippetOverviewSchema,
-  snippetSchema,
-} from './snippet.schema.js';
+import { listSnippetsInputSchema, listSnippetsOutputSchema } from './list-snippets.schema.js';
+import { getSnippetInputSchema, getSnippetOutputSchema } from './get-snippet.schema.js';
+import { searchSnippetsInputSchema, searchSnippetsOutputSchema } from './search-snippets.schema.js';
+import { snippetMetadataSchema, snippetOverviewSchema, snippetSchema } from './snippet.schema.js';
 
 describe('Input Schemas', () => {
   it('should validate list_snippets input (empty object)', () => {

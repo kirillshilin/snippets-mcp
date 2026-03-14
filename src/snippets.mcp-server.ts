@@ -220,9 +220,7 @@ After listing them, let me know I can ask you to retrieve the full code for any 
   }
 
   private async loadToolDescriptions(): Promise<void> {
-    const descriptionsDir = join(
-      fileURLToPath(new URL('../assets/descriptions', import.meta.url)),
-    );
+    const descriptionsDir = join(fileURLToPath(new URL('../assets/descriptions', import.meta.url)));
     const tools = ['list_snippets', 'get_snippet', 'search_snippets'] as const;
     for (const tool of tools) {
       try {
