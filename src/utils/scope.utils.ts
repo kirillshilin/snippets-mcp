@@ -4,10 +4,9 @@ export function normalizeScope(scope: string): string {
 }
 
 export function matchesScope(scopes: string[], target: string): boolean {
-  const normalizedTarget = target.toLowerCase();
+  const normalizedTarget = normalizeScope(target);
   return scopes
-    .map((scope) => scope.trim().toLowerCase())
-    .filter((scope) => scope.length > 0)
-    .map((scope) => (scope.startsWith('.') ? scope.slice(1) : scope))
+    .filter((scope) => scope.trim().length > 0)
+    .map((scope) => normalizeScope(scope))
     .includes(normalizedTarget);
 }
