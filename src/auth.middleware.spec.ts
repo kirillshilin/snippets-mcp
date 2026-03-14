@@ -1,7 +1,7 @@
-import { createServer } from '../src/api.js';
+import { createServer } from './snippets.api.js';
 import type { Express } from 'express';
 import request from 'supertest';
-import { config } from '../src/config.js';
+import { config } from './app.config.js';
 
 describe('Bearer Token Authentication', () => {
   let app: Express;

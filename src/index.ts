@@ -1,5 +1,5 @@
-import { createServer } from './api.js';
-import { config } from './config.js';
+import { createServer } from './snippets.api.js';
+import { config } from './app.config.js';
 
 async function main(): Promise<void> {
   try {
