@@ -24,4 +24,3 @@ export const config: Config = {
       ? (process.env['AUTH_TOKEN'] as string)
       : undefined,
 };
-

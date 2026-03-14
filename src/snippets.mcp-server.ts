@@ -3,18 +3,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { SnippetService } from '../services/snippet-service.js';
-import type { Snippet, SnippetMetadata } from '../types/snippet.js';
-import {
-  listSnippetsInputSchema,
-  getSnippetInputSchema,
-  searchSnippetsInputSchema,
-} from '../schemas/input-schemas.js';
-import {
-  listSnippetsOutputSchema,
-  getSnippetOutputSchema,
-  searchSnippetsOutputSchema,
-} from '../schemas/output-schemas.js';
+import { SnippetService } from './services/snippets.service.js';
+import type { Snippet, SnippetMetadata } from './types/snippet.types.js';
+import { listSnippetsInputSchema } from './schemas/list-snippets.schema.js';
+import { getSnippetInputSchema } from './schemas/get-snippet.schema.js';
+import { searchSnippetsInputSchema } from './schemas/search-snippets.schema.js';
+import { listSnippetsOutputSchema } from './schemas/list-snippets.schema.js';
+import { getSnippetOutputSchema } from './schemas/get-snippet.schema.js';
+import { searchSnippetsOutputSchema } from './schemas/search-snippets.schema.js';
 
 const DEFAULT_TOOL_DESCRIPTIONS = {
   list_snippets:
@@ -224,9 +220,7 @@ After listing them, let me know I can ask you to retrieve the full code for any 
   }
 
   private async loadToolDescriptions(): Promise<void> {
-    const descriptionsDir = join(
-      fileURLToPath(new URL('../../assets/descriptions', import.meta.url)),
-    );
+    const descriptionsDir = join(fileURLToPath(new URL('../assets/descriptions', import.meta.url)));
     const tools = ['list_snippets', 'get_snippet', 'search_snippets'] as const;
     for (const tool of tools) {
       try {

@@ -1,67 +1,65 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, extname } from 'node:path';
-import MiniSearch from 'minisearch';
-import type { Snippet, SnippetMetadata } from '../types/snippet.js';
-import { config } from '../config.js';
+import type { Snippet, SnippetMetadata } from '../types/snippet.types.js';
+import { config } from '../app.config.js';
 import type { SnippetLoader } from './loaders/index.js';
 import { StandardJsonLoader, VSCodeSnippetLoader, MarkdownLoader } from './loaders/index.js';
+import type { ISearchIndex } from '../utils/search-index.js';
+import { MiniSearchAdapter } from '../utils/minisearch.adapter.js';
+import { matchesScope, normalizeScope } from '../utils/scope.utils.js';
 
 interface SnippetFile {
   metadata: SnippetMetadata;
-  content: string | undefined; // For snippets with content in memory
-  filePath: string | undefined; // For on-demand loading
-  loader: SnippetLoader | undefined; // Loader that handles this snippet
+  content: string | undefined;
+  filePath: string | undefined;
+  loader: SnippetLoader | undefined;
 }
 
 export class SnippetService {
   private readonly snippets: Map<string, SnippetFile>;
   private readonly snippetsDir: string;
   private initialized: boolean = false;
-  private searchIndex: MiniSearch<SnippetMetadata>;
+  private searchIndex: ISearchIndex<SnippetMetadata>;
   private readonly loaders: SnippetLoader[];
 
-  constructor(snippetsDir?: string, loaders?: SnippetLoader[]) {
+  constructor(
+    snippetsDir?: string,
+    loaders?: SnippetLoader[],
+    searchIndex?: ISearchIndex<SnippetMetadata>,
+  ) {
     this.snippets = new Map();
     this.snippetsDir = snippetsDir ?? config.snippetsDir;
 
-    // Initialize loaders - use provided loaders or default set
     this.loaders = loaders ?? [
-      new VSCodeSnippetLoader(), // Try VS Code format first (works for both .json and .code-snippet)
-      new StandardJsonLoader(), // Then try standard format
-      new MarkdownLoader(), // Markdown files with YAML front matter
+      new VSCodeSnippetLoader(),
+      new StandardJsonLoader(),
+      new MarkdownLoader(),
     ];
 
-    // eslint-disable-next-line no-console
-
-    // Initialize MiniSearch with fields to index
-    this.searchIndex = new MiniSearch({
-      fields: ['title', 'description', 'keywords', 'scope', 'prefix'],
-      storeFields: ['prefix', 'title', 'description', 'scope', 'keywords'],
-      idField: 'prefix', // Use prefix as the unique identifier
-      searchOptions: {
-        boost: { title: 2, keywords: 1.5 },
-        fuzzy: 0.2,
-        prefix: true,
-      },
-    });
+    this.searchIndex =
+      searchIndex ??
+      (new MiniSearchAdapter<SnippetMetadata & Record<string, unknown>>({
+        fields: ['title', 'description', 'keywords', 'scope', 'prefix'],
+        storeFields: ['prefix', 'title', 'description', 'scope', 'keywords'],
+        idField: 'prefix',
+        searchOptions: {
+          boost: { title: 2, keywords: 1.5 },
+          fuzzy: 0.2,
+          prefix: true,
+        },
+      }) as ISearchIndex<SnippetMetadata>);
   }
 
-  /**
-   * Initialize the service by loading all snippet metadata from files
-   */
   public async initialize(): Promise<void> {
     if (this.initialized) {
-      // eslint-disable-next-line no-console
       return;
     }
 
     try {
-      // eslint-disable-next-line no-console
       await this.assertSnippetsDir();
       await this.loadSnippetsFromDir(this.snippetsDir);
       this.finalizeIndex();
     } catch (error) {
-      // If directory doesn't exist, just initialize with empty snippets
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         console.warn(`Snippets directory not found: ${this.snippetsDir}`);
         this.initialized = true;
@@ -146,39 +144,25 @@ export class SnippetService {
     }
   }
 
-  /**
-   * Get list of all snippet metadata (without content), optionally filtered by scope
-   */
   public listSnippetMetadata(scope?: string): SnippetMetadata[] {
     const allSnippets = Array.from(this.snippets.values()).map((snippet) => snippet.metadata);
     if (!scope) {
       return allSnippets;
     }
-    const normalizedScope = scope.trim().toLowerCase();
-    const normalizedScopeToken = normalizedScope.startsWith('.')
-      ? normalizedScope.slice(1)
-      : normalizedScope;
-    return allSnippets.filter((metadata) =>
-      this.matchesScope(metadata.scope, normalizedScopeToken),
-    );
+    const normalizedScopeToken = normalizeScope(scope);
+    return allSnippets.filter((metadata) => matchesScope(metadata.scope, normalizedScopeToken));
   }
 
-  /**
-   * Get the content of a specific snippet by its prefix
-   */
   public async getSnippetContent(prefix: string): Promise<string> {
-    // eslint-disable-next-line no-console
     const snippet = this.snippets.get(prefix);
     if (snippet === undefined) {
       throw new Error(`Snippet not found: ${prefix}`);
     }
 
-    // If content is already in memory, return it
     if (snippet.content !== undefined) {
       return snippet.content;
     }
 
-    // Otherwise, load on-demand using the loader
     if (snippet.loader?.getContent && snippet.filePath) {
       const content = await snippet.loader.getContent(snippet.filePath, prefix);
       if (content !== undefined) {
@@ -189,11 +173,7 @@ export class SnippetService {
     throw new Error(`Unable to load content for snippet: ${prefix}`);
   }
 
-  /**
-   * Get a complete snippet including both metadata and content
-   */
   public async getSnippet(prefix: string): Promise<Snippet> {
-    // eslint-disable-next-line no-console
     const snippet = this.snippets.get(prefix);
     if (snippet === undefined) {
       throw new Error(`Snippet not found: ${prefix}`);
@@ -206,25 +186,17 @@ export class SnippetService {
     };
   }
 
-  /**
-   * Search snippets by query string using full text search
-   * Searches across title, description, keywords, scope, and prefix
-   */
   public searchSnippets(query: string, limit: number = 5, scope?: string): SnippetMetadata[] {
-    // eslint-disable-next-line no-console
     if (!query || query.trim().length === 0) {
       return [];
     }
 
-    const results = this.searchIndex.search(query, {});
+    const results = this.searchIndex.search(query);
     const normalizedLimit = Number.isFinite(limit) ? Math.floor(limit) : 5;
     if (normalizedLimit <= 0) {
       return [];
     }
-    const normalizedScope = scope?.trim().toLowerCase();
-    const normalizedScopeToken = normalizedScope?.startsWith('.')
-      ? normalizedScope.slice(1)
-      : normalizedScope;
+    const normalizedScopeToken = scope !== undefined ? normalizeScope(scope) : undefined;
 
     const matches: SnippetMetadata[] = [];
     for (const result of results) {
@@ -232,7 +204,6 @@ export class SnippetService {
         break;
       }
 
-      // MiniSearch returns stored fields as index signatures, requiring bracket notation
       const prefix = String(result['prefix']);
       const snippet = this.snippets.get(prefix);
       if (snippet === undefined) {
@@ -240,8 +211,8 @@ export class SnippetService {
       }
 
       if (
-        normalizedScopeToken &&
-        !this.matchesScope(snippet.metadata.scope, normalizedScopeToken)
+        normalizedScopeToken !== undefined &&
+        !matchesScope(snippet.metadata.scope, normalizedScopeToken)
       ) {
         continue;
       }
@@ -249,16 +220,6 @@ export class SnippetService {
       matches.push(snippet.metadata);
     }
 
-    // eslint-disable-next-line no-console
     return matches;
-  }
-
-  private matchesScope(scopes: string[], target: string): boolean {
-    const normalizedTarget = target.toLowerCase();
-    return scopes
-      .map((scope) => scope.trim().toLowerCase())
-      .filter((scope) => scope.length > 0)
-      .map((scope) => (scope.startsWith('.') ? scope.slice(1) : scope))
-      .includes(normalizedTarget);
   }
 }

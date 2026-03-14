@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SnippetsMcpServer } from './mcp/server.js';
+import { SnippetsMcpServer } from './snippets.mcp-server.js';
 import { resolveSnippetsDirFromArgv } from './utils/argv.js';
 import { logInfo, logWarn, logError } from './utils/logger.js';
 

@@ -2,12 +2,13 @@
 const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests'],
-  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  roots: ['<rootDir>/src'],
+  testMatch: ['**/?(*.)+(spec).ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.interface.ts',
+    '!src/**/*.spec.ts',
     '!src/index.ts',
   ],
   coverageDirectory: 'coverage',

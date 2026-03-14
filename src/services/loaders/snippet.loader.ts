@@ -1,4 +1,4 @@
-import type { SnippetMetadata } from '../../types/snippet.js';
+import type { SnippetMetadata } from '../../types/snippet.types.js';
 
 /**
  * Loaded snippet data with metadata and optional content

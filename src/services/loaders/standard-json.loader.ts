@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import type { SnippetLoader, LoadedSnippet } from './snippet-loader.js';
-import type { SnippetMetadata } from '../../types/snippet.js';
+import type { SnippetLoader, LoadedSnippet } from './snippet.loader.js';
+import type { SnippetMetadata } from '../../types/snippet.types.js';
 
 /**
  * Loader for standard JSON snippet format

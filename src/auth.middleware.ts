@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
-import { config } from './config.js';
+import { config } from './app.config.js';
 
 export function bearerAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
   if (config.authToken === undefined) {

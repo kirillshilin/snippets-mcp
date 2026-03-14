@@ -1,4 +1,4 @@
-import { createServer } from '../src/api.js';
+import { createServer } from './snippets.api.js';
 import type { Express } from 'express';
 import request from 'supertest';
 

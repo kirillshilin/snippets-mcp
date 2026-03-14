@@ -1,8 +1,8 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { SnippetsMcpServer } from './mcp/server.js';
-import { bearerAuthMiddleware } from './auth.js';
+import { SnippetsMcpServer } from './snippets.mcp-server.js';
+import { bearerAuthMiddleware } from './auth.middleware.js';
 import { logInfo, logError } from './utils/logger.js';
 
 // Zod schemas for request validation

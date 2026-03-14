@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { SnippetsMcpServer } from './mcp/server.js';
+import { SnippetsMcpServer } from './snippets.mcp-server.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
-import { config } from './config.js';
+import { config } from './app.config.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { bearerAuthMiddleware } from './auth.js';
+import { bearerAuthMiddleware } from './auth.middleware.js';
 import { logInfo, logError } from './utils/logger.js';
 
 function main(): void {
