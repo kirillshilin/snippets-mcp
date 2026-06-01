@@ -1,4 +1,6 @@
 import express, { type Express, type Request, type Response } from 'express';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { SnippetsMcpServer } from './snippets.mcp-server.js';
@@ -27,6 +29,10 @@ export async function createServer(): Promise<Express> {
   const app = express();
 
   app.use(express.json());
+
+  // Serve the web UI from the public directory
+  const publicDir = join(fileURLToPath(new URL('../public', import.meta.url)));
+  app.use(express.static(publicDir));
 
   const mcpServer = new SnippetsMcpServer();
   await mcpServer.initialize();
@@ -141,6 +147,11 @@ export async function createServer(): Promise<Express> {
         });
       }
     }
+  });
+
+  // SPA fallback — serve index.html for any unmatched GET request
+  app.get('*', (_req: Request, res: Response): void => {
+    res.sendFile(join(publicDir, 'index.html'));
   });
 
   return app;
