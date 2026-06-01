@@ -1,11 +1,20 @@
 import express, { type Express, type Request, type Response } from 'express';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { SnippetsMcpServer } from './snippets.mcp-server.js';
 import { bearerAuthMiddleware } from './auth.middleware.js';
 import { logInfo, logError } from './utils/logger.js';
+
+// Rate limiter for public (unauthenticated) routes
+const publicLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Zod schemas for request validation
 const SearchQuerySchema = z.object({
@@ -30,9 +39,9 @@ export async function createServer(): Promise<Express> {
 
   app.use(express.json());
 
-  // Serve the web UI from the public directory
+  // Serve the web UI from the public directory (rate-limited)
   const publicDir = join(fileURLToPath(new URL('../public', import.meta.url)));
-  app.use(express.static(publicDir));
+  app.use(publicLimiter, express.static(publicDir));
 
   const mcpServer = new SnippetsMcpServer();
   await mcpServer.initialize();
@@ -41,7 +50,7 @@ export async function createServer(): Promise<Express> {
   const transports = new Map<string, SSEServerTransport>();
 
   // Health check endpoint
-  app.get('/health', (_req: Request, res: Response): void => {
+  app.get('/health', publicLimiter, (_req: Request, res: Response): void => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
@@ -150,7 +159,7 @@ export async function createServer(): Promise<Express> {
   });
 
   // SPA fallback — serve index.html for any unmatched GET request
-  app.get('*', (_req: Request, res: Response): void => {
+  app.get('*', publicLimiter, (_req: Request, res: Response): void => {
     res.sendFile(join(publicDir, 'index.html'));
   });
 

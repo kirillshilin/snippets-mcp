@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   Search,
   Code2,
@@ -10,6 +10,9 @@ import {
   Layers,
   Sparkles,
   Terminal,
+  Moon,
+  Sun,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 /* -------------------------------------------------------------------------- */
@@ -43,7 +47,7 @@ interface Snippet extends SnippetMetadata {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Mock data – replace with real API calls when wiring up the backend         */
+/* Mock data                                                                   */
 /* -------------------------------------------------------------------------- */
 
 const MOCK_SNIPPETS: Snippet[] = [
@@ -130,11 +134,7 @@ const MOCK_SNIPPETS: Snippet[] = [
     description: 'Typed async function with error boundary',
     keywords: ['async', 'await', 'typescript', 'function'],
     scope: ['typescript', 'javascript'],
-    content: [
-      'async function ${1:name}($2): Promise<${3:void}> {',
-      '  $0',
-      '}',
-    ].join('\n'),
+    content: ['async function ${1:name}($2): Promise<${3:void}> {', '  $0', '}'].join('\n'),
   },
   {
     prefix: 'ts-interface',
@@ -169,6 +169,30 @@ const MOCK_SNIPPETS: Snippet[] = [
 ]
 
 /* -------------------------------------------------------------------------- */
+/* Dark mode hook                                                              */
+/* -------------------------------------------------------------------------- */
+
+function useDarkMode() {
+  const [dark, setDark] = useState<boolean>(() => {
+    const stored = localStorage.getItem('theme')
+    if (stored) return stored === 'dark'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [dark])
+
+  return [dark, setDark] as const
+}
+
+/* -------------------------------------------------------------------------- */
 /* Helpers                                                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -178,12 +202,46 @@ function getScopeBadgeVariant(scope: string): 'default' | 'info' | 'success' | '
   return 'secondary'
 }
 
-function highlight(text: string, query: string): string {
+function highlightSegments(text: string, query: string): React.ReactNode {
   if (!query.trim()) return text
   const safe = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return text.replace(
-    new RegExp(`(${safe})`, 'gi'),
-    '<mark class="bg-primary/20 text-primary rounded-sm px-0.5">$1</mark>',
+  const parts = text.split(new RegExp(`(${safe})`, 'gi'))
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} className="bg-primary/20 text-primary rounded-sm px-0.5 not-italic">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* SkeletonCard                                                                */
+/* -------------------------------------------------------------------------- */
+
+function SkeletonCard() {
+  return (
+    <Card className="pointer-events-none">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-8 h-8 rounded-lg shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-3">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-5/6" />
+        <div className="flex gap-1">
+          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -201,53 +259,55 @@ function SnippetCard({
   onClick: () => void
 }) {
   return (
-    <Card
-      className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5"
+    <button
+      type="button"
       onClick={onClick}
+      aria-label={`View snippet: ${snippet.title}`}
+      className="group text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Code2 className="w-4 h-4 text-primary" />
+      <Card className="h-full transition-all duration-200 group-hover:shadow-lg group-hover:border-primary/40 group-hover:-translate-y-0.5 group-focus-visible:border-primary/40">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Code2 className="w-4 h-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="text-sm font-semibold truncate">
+                  {highlightSegments(snippet.title, query)}
+                </CardTitle>
+                <code className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                  {snippet.prefix}
+                </code>
+              </div>
             </div>
-            <div className="min-w-0">
-              <CardTitle
-                className="text-sm truncate"
-                dangerouslySetInnerHTML={{ __html: highlight(snippet.title, query) }}
-              />
-              <code className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
-                {snippet.prefix}
-              </code>
-            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0 space-y-3">
-        <CardDescription
-          className="text-xs line-clamp-2"
-          dangerouslySetInnerHTML={{ __html: highlight(snippet.description, query) }}
-        />
-        <div className="flex flex-wrap gap-1">
-          {snippet.scope.map((s) => (
-            <Badge key={s} variant={getScopeBadgeVariant(s)} className="text-[10px] px-1.5 py-0">
-              {s}
-            </Badge>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {snippet.keywords.slice(0, 4).map((k) => (
-            <span
-              key={k}
-              className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5"
-            >
-              #{k}
-            </span>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-3">
+          <CardDescription className="text-xs line-clamp-2">
+            {highlightSegments(snippet.description, query)}
+          </CardDescription>
+          <div className="flex flex-wrap gap-1">
+            {snippet.scope.map((s) => (
+              <Badge key={s} variant={getScopeBadgeVariant(s)} className="text-[10px] px-1.5 py-0">
+                {s}
+              </Badge>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {snippet.keywords.slice(0, 4).map((k) => (
+              <span
+                key={k}
+                className="text-[10px] text-muted-foreground/70 bg-muted rounded px-1.5 py-0.5"
+              >
+                #{k}
+              </span>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </button>
   )
 }
 
@@ -255,25 +315,42 @@ function SnippetCard({
 /* SnippetDetail                                                               */
 /* -------------------------------------------------------------------------- */
 
-function SnippetDetail({ snippet, onClose }: { snippet: Snippet; onClose: () => void }) {
+function SnippetDetail({
+  snippet,
+  onClose,
+  returnFocusRef,
+}: {
+  snippet: Snippet
+  onClose: () => void
+  returnFocusRef: React.RefObject<HTMLElement | null>
+}) {
   const [copied, setCopied] = useState(false)
+  const copyBtnRef = useRef<HTMLButtonElement>(null)
 
-  const handleCopy = async () => {
+  useEffect(() => {
+    copyBtnRef.current?.focus()
+    return () => {
+      // restore focus to card that opened the dialog
+      setTimeout(() => returnFocusRef.current?.focus(), 0)
+    }
+  }, [returnFocusRef])
+
+  const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(snippet.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
+  }, [snippet.content])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Code2 className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <DialogTitle>{snippet.title}</DialogTitle>
+              <DialogTitle className="text-lg">{snippet.title}</DialogTitle>
               <DialogDescription className="font-mono text-xs mt-0.5">
                 {snippet.prefix}
               </DialogDescription>
@@ -283,14 +360,14 @@ function SnippetDetail({ snippet, onClose }: { snippet: Snippet; onClose: () => 
 
         <Separator />
 
-        <div className="grid grid-cols-2 gap-6 text-sm overflow-hidden flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 overflow-hidden flex-1 min-h-0">
           {/* Meta */}
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto">
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
                 Description
               </p>
-              <p className="text-sm">{snippet.description}</p>
+              <p className="text-sm leading-relaxed">{snippet.description}</p>
             </div>
 
             <div>
@@ -330,16 +407,17 @@ function SnippetDetail({ snippet, onClose }: { snippet: Snippet; onClose: () => 
                 <Terminal className="w-3 h-3" /> Content
               </p>
               <Button
+                ref={copyBtnRef}
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-xs gap-1"
+                className="h-7 px-2 text-xs gap-1"
                 onClick={handleCopy}
               >
                 {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 {copied ? 'Copied!' : 'Copy'}
               </Button>
             </div>
-            <ScrollArea className="flex-1 rounded-lg border bg-muted/50">
+            <ScrollArea className="flex-1 rounded-lg border bg-muted/40 min-h-[180px]">
               <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap break-all">
                 {snippet.content}
               </pre>
@@ -355,18 +433,46 @@ function SnippetDetail({ snippet, onClose }: { snippet: Snippet; onClose: () => 
 /* EmptyState                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function EmptyState({ query }: { query: string }) {
+function EmptyState({
+  query,
+  activeScope,
+  onClearQuery,
+  onClearScope,
+}: {
+  query: string
+  activeScope: string | null
+  onClearQuery: () => void
+  onClearScope: () => void
+}) {
+  const hasFilters = query.trim() || activeScope
+
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
         <Search className="w-7 h-7 text-muted-foreground" />
       </div>
       <h3 className="text-lg font-semibold mb-1">No snippets found</h3>
-      <p className="text-sm text-muted-foreground max-w-xs">
+      <p className="text-sm text-muted-foreground max-w-xs mb-5">
         {query
-          ? `No snippets match "${query}". Try a different keyword.`
-          : 'No snippets are available yet.'}
+          ? `No snippets match "${query}".`
+          : activeScope
+            ? `No snippets for scope "${activeScope}".`
+            : 'No snippets are available yet.'}
       </p>
+      {hasFilters && (
+        <div className="flex gap-2 flex-wrap justify-center">
+          {query && (
+            <Button variant="outline" size="sm" onClick={onClearQuery} className="gap-1">
+              <X className="w-3 h-3" /> Clear search
+            </Button>
+          )}
+          {activeScope && (
+            <Button variant="outline" size="sm" onClick={onClearScope} className="gap-1">
+              <X className="w-3 h-3" /> Clear scope filter
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -378,9 +484,31 @@ function EmptyState({ query }: { query: string }) {
 const ALL_SCOPES = Array.from(new Set(MOCK_SNIPPETS.flatMap((s) => s.scope))).sort()
 
 export default function App() {
+  const [dark, setDark] = useDarkMode()
   const [query, setQuery] = useState('')
   const [activeScope, setActiveScope] = useState<string | null>(null)
   const [selected, setSelected] = useState<Snippet | null>(null)
+  const [loading, setLoading] = useState(true)
+  const lastFocusedRef = useRef<HTMLElement | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // Simulate initial API load
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 800)
+    return () => clearTimeout(t)
+  }, [])
+
+  // '/' shortcut to focus search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim()
@@ -397,62 +525,115 @@ export default function App() {
     })
   }, [query, activeScope])
 
+  const handleCardClick = (snippet: Snippet, el: HTMLElement) => {
+    lastFocusedRef.current = el
+    setSelected(snippet)
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-40">
+      {/* ------------------------------------------------------------------ */}
+      {/* Header                                                              */}
+      {/* ------------------------------------------------------------------ */}
+      <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="text-base font-semibold leading-none">Snippets MCP</h1>
-              <p className="text-xs text-muted-foreground leading-none mt-0.5">Code snippet library</p>
-            </div>
+            <p className="text-base font-semibold">Snippets MCP</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1 text-xs">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="gap-1 text-xs hidden sm:flex">
               <BookOpen className="w-3 h-3" />
               {MOCK_SNIPPETS.length} snippets
             </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              onClick={() => setDark((d) => !d)}
+              className="h-9 w-9"
+            >
+              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <div className="border-b bg-gradient-to-br from-primary/5 via-background to-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* ------------------------------------------------------------------ */}
+      {/* Hero                                                                */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="relative border-b overflow-hidden">
+        {/* Background gradient layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-12 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-2xl" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight mb-2">Find the right snippet</h2>
-            <p className="text-muted-foreground mb-6">
-              Browse and search your code snippets. Click any card to view the full content and copy
-              it.
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">
+              Find the right snippet
+            </h1>
+            <p className="text-base sm:text-lg text-muted-foreground mb-8 leading-relaxed">
+              Browse and search your code snippet library. Click any card to view the full content
+              and copy it instantly.
             </p>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+            {/* Search */}
+            <div className="relative shadow-sm">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
+                ref={searchRef}
                 placeholder="Search by title, keyword, or prefix…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-9 h-11 text-sm"
-                autoFocus
+                onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+                className="pl-10 h-12 text-sm pr-16"
+                aria-label="Search snippets"
               />
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                /
+              </kbd>
+            </div>
+
+            {/* Stats row */}
+            <div className="flex gap-6 mt-5">
+              <div className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{MOCK_SNIPPETS.length}</span>{' '}
+                snippets
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{ALL_SCOPES.length}</span> scopes
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                  {Array.from(new Set(MOCK_SNIPPETS.flatMap((s) => s.keywords))).length}
+                </span>{' '}
+                keywords
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Body */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Body                                                                */}
+      {/* ------------------------------------------------------------------ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Scope filters */}
-        <div className="flex items-center gap-2 mb-6 flex-wrap">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Filter:</span>
+        {/* Scope filter pills */}
+        <div
+          className="flex items-center gap-2 mb-7 flex-wrap"
+          role="group"
+          aria-label="Filter by scope"
+        >
+          <span className="text-xs font-medium text-muted-foreground mr-1">Scope:</span>
           <button
             onClick={() => setActiveScope(null)}
+            aria-pressed={!activeScope}
             className={cn(
-              'text-xs px-3 py-1.5 rounded-full border transition-colors',
+              'text-xs px-3 py-1.5 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               !activeScope
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-background text-foreground border-border hover:border-primary/50',
@@ -464,8 +645,9 @@ export default function App() {
             <button
               key={scope}
               onClick={() => setActiveScope(activeScope === scope ? null : scope)}
+              aria-pressed={activeScope === scope}
               className={cn(
-                'text-xs px-3 py-1.5 rounded-full border transition-colors font-mono',
+                'text-xs px-3 py-1.5 rounded-full border transition-colors font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 activeScope === scope
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-background text-foreground border-border hover:border-primary/50',
@@ -475,7 +657,7 @@ export default function App() {
             </button>
           ))}
 
-          {filtered.length > 0 && (
+          {!loading && filtered.length > 0 && (
             <span className="ml-auto text-xs text-muted-foreground">
               {filtered.length} result{filtered.length !== 1 ? 's' : ''}
             </span>
@@ -484,15 +666,27 @@ export default function App() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.length === 0 ? (
-            <EmptyState query={query} />
+          {loading ? (
+            Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              query={query}
+              activeScope={activeScope}
+              onClearQuery={() => setQuery('')}
+              onClearScope={() => setActiveScope(null)}
+            />
           ) : (
             filtered.map((snippet) => (
               <SnippetCard
                 key={snippet.prefix}
                 snippet={snippet}
                 query={query}
-                onClick={() => setSelected(snippet)}
+                onClick={() => {
+                  const el = document.querySelector<HTMLElement>(
+                    `[aria-label="View snippet: ${snippet.title}"]`,
+                  )
+                  handleCardClick(snippet, el ?? document.body)
+                }}
               />
             ))
           )}
@@ -500,7 +694,13 @@ export default function App() {
       </div>
 
       {/* Detail modal */}
-      {selected && <SnippetDetail snippet={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <SnippetDetail
+          snippet={selected}
+          onClose={() => setSelected(null)}
+          returnFocusRef={lastFocusedRef}
+        />
+      )}
     </div>
   )
 }
